@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Színkötögetős Játék - Fejlesztett Verzió</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;700&display=swap');
+
+        :root {
+            --grid-size: 14;
+            --cell-size: min(80vmin / var(--grid-size), 60px);
+            --color-bg: #111827; --color-panel-bg: #1f2937; --color-board-bg: #1f2937;
+            --color-border: #374151; --color-text-primary: #f9fafb; --color-text-secondary: #9ca3af;
+            --color-accent: #818cf8; --color-accent-hover: #6366f1; --color-shadow: rgba(0, 0, 0, 0.2);
+
+            --ball-green: #22c55e;
+            --ball-purple: #a855f7;
+            --ball-orange: #f97316;
+            --ball-lemon-yellow: #facc15;
+            --ball-dark-brown: #854d0e;
+            --ball-dark-blue: #1d4ed8;
+            --ball-brick-red: #b91c1c;
+
+            --ball-bomb-bg: #374151; --ball-bomb-icon: #f9fafb;
+            --ball-stone-bg: #6b7280; --ball-stone-border: #4b5563;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif; display: flex; flex-direction: column; justify-content: center; align-items: center;
+            min-height: 100vh; background-color: var(--color-bg); margin: 0; padding: 20px; box-sizing: border-box;
+            color: var(--color-text-primary);
+        }
+        body.ability-active { cursor: crosshair; }
+
+        .game-layout { display: flex; gap: 30px; align-items: flex-start; justify-content: center; width: 100%; }
+
+        #game-board {
+            width: calc(var(--grid-size) * var(--cell-size)); height: calc(var(--grid-size) * var(--cell-size));
+            display: grid; grid-template-columns: repeat(var(--grid-size), 1fr); background-color: var(--color-board-bg);
+            border-radius: 16px; box-shadow: 0 10px 30px var(--color-shadow); position: relative;
+            border: 1px solid var(--color-border); user-select: none;
+        }
+
+        #path-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+        #path-line { stroke: var(--color-accent); stroke-width: 3px; stroke-dasharray: 6 4; fill: none; stroke-linecap: round; filter: drop-shadow(0 0 3px var(--color-accent)); }
+
+        .cell { position: relative; border-right: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border); }
+        .cell:nth-child(var(--grid-size)n) { border-right: none; }
+        .cell:nth-last-child(-n + var(--grid-size)) { border-bottom: none; }
+
+        .ball {
+            width: 80%; height: 80%; position: absolute; top: 10%; left: 10%;
+            cursor: pointer; will-change: transform; z-index: 10;
+            filter: drop-shadow(0 2px 3px rgba(0,0,0,0.25));
+        }
+        .ball.ghost { opacity: 0.4; pointer-events: none; filter: saturate(0.5); z-index: 6; }
+        .ball.stone { cursor: not-allowed; }
+
+        .ball.selected {
+            animation: select-spin 1.5s linear infinite;
+            filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5));
+        }
+        .ball.popping { animation: pop-out 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+        .ball.spawning { animation: spawn 0.4s cubic-bezier(0.5, 1.5, 0.5, 1) forwards; }
+        .ball.shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+        .explosion-effect { position: absolute; inset: 0; background-color: var(--color-accent); border-radius: 50%; animation: explode 0.4s ease-out forwards; z-index: 40; }
+
+        @keyframes select-spin { from { transform: scale(1.1) rotate(0deg); } to { transform: scale(1.1) rotate(360deg); } }
+        @keyframes pop-out { 0% { transform: scale(1) rotate(0deg); opacity: 1; } 50% { transform: scale(1.2) rotate(45deg); opacity: 0.5; } 100% { transform: scale(0) rotate(90deg); opacity: 0; } }
+        @keyframes spawn { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes shake { 10%, 90% { transform: translateX(-1px); } 20%, 80% { transform: translateX(2px); } 30%, 50%, 70% { transform: translateX(-4px); } 40%, 60% { transform: translateX(4px); } }
+        @keyframes explode { from { transform: scale(0); opacity: 0.7; } to { transform: scale(2.5); opacity: 0; } }
+
+        .game-ui-panel { width: 250px; padding: 30px; background-color: var(--color-panel-bg); border-radius: 16px; box-shadow: 0 10px 30px var(--color-shadow); border: 1px solid var(--color-border); display: flex; flex-direction: column; gap: 20px; }
+        .ui-box { display: flex; justify-content: space-between; align-items: baseline; }
+        .ui-box h2 { font-size: 0.9em; margin: 0; color: var(--color-text-secondary); font-weight: 500; text-transform: uppercase; letter-spacing: 1px; }
+        .ui-box .value { font-size: 2.2em; font-weight: 700; color: var(--color-text-primary); line-height: 1; }
+        #next-balls-preview { display: flex; gap: 10px; height: 35px; align-items: center; }
+        #next-balls-preview .ball { position: static; width: 35px; height: 35px; }
+
+        .ui-button { width: 100%; padding: 14px; font-size: 1.1em; font-weight: 500; cursor: pointer; border: none; background: var(--color-accent); color: var(--color-text-primary); border-radius: 12px; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 10px rgba(0,0,0, 0.2); }
+        .ui-button:hover:not(:disabled) { background: var(--color-accent-hover); transform: translateY(-2px); }
+        .ui-button:active:not(:disabled) { transform: translateY(0); }
+        .ui-button:disabled { background-color: #4b5563; color: #9ca3af; cursor: not-allowed; box-shadow: none; }
+        .ui-button svg { width: 22px; height: 22px; }
+
+        .ability-bar-container { width: 100%; background-color: var(--color-bg); border-radius: 8px; padding: 4px; border: 1px solid var(--color-border); }
+        #ability-bar-fill { width: 0%; height: 16px; background-color: var(--color-accent); border-radius: 5px; transition: width 0.3s ease-out; }
+        .abilities-box .ui-button { margin-top: 8px; }
+
+        .game-over-overlay { position: absolute; inset: 0; background-color: rgba(17, 24, 39, 0.85); display: flex; flex-direction: column; justify-content: center; align-items: center; opacity: 0; visibility: hidden; transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); backdrop-filter: blur(8px); border-radius: inherit; z-index: 100; }
+        .game-over-overlay.visible { opacity: 1; visibility: visible; }
+        .game-over-box { font-size: 3em; font-weight: 700; color: var(--color-text-primary); margin-bottom: 20px; }
+
+        .score-popup { position: absolute; color: var(--color-accent); font-size: calc(var(--cell-size) * 0.9); font-weight: bold; pointer-events: none; z-index: 50; text-shadow: 0 0 8px rgba(0,0,0,0.5); animation: fly-to-score 1.2s cubic-bezier(0.5, 0, 1, 0.5) forwards; }
+        @keyframes fly-to-score { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-120px) scale(0.5); } }
+
+        /* --- ÚJ: Játékszabályzat Stílus --- */
+        .rules-container {
+            margin-top: 40px;
+            padding: 30px 35px;
+            background-color: var(--color-panel-bg);
+            border-radius: 16px;
+            box-shadow: 0 10px 30px var(--color-shadow);
+            border: 1px solid var(--color-border);
+            max-width: 1000px;
+            width: 95%;
+        }
+        .rules-container h2 {
+            font-size: 2em;
+            color: var(--color-accent);
+            text-align: center;
+            margin-top: 0;
+            margin-bottom: 25px;
+            border-bottom: 2px solid var(--color-border);
+            padding-bottom: 15px;
+        }
+        .rules-container h3 {
+            font-size: 1.4em;
+            color: var(--color-text-primary);
+            margin-top: 25px;
+            margin-bottom: 10px;
+            border-left: 4px solid var(--color-accent);
+            padding-left: 10px;
+        }
+        .rules-container h4 {
+            font-size: 1.1em;
+            color: var(--color-accent);
+            margin-top: 15px;
+            margin-bottom: 5px;
+        }
+        .rules-container p, .rules-container li {
+            font-size: 0.95em;
+            color: var(--color-text-secondary);
+            line-height: 1.6;
+        }
+        .rules-container ul, .rules-container ol {
+            padding-left: 25px;
+        }
+        .rules-container li {
+            margin-bottom: 8px;
+        }
+        .rules-container strong {
+            color: var(--color-text-primary);
+            font-weight: 700;
+        }
+
+        @media (max-width: 1024px) { .game-layout { flex-direction: column; align-items: center; } .game-ui-panel { width: calc(var(--grid-size) * var(--cell-size)); order: -1; } }
+    </style>
+</head>
+<body>
+    <svg width="0" height="0" style="position:absolute; z-index: -1;">
+        <defs>
+            <radialGradient id="ballGloss" cx="30%" cy="30%" r="65%"><stop offset="0%" stop-color="#fff" stop-opacity="0.6"/><stop offset="100%" stop-color="#fff" stop-opacity="0.0"/></radialGradient>
+            <symbol id="ball-symbol" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="var(--ball-color, #ccc)" /><circle cx="50" cy="50" r="50" fill="url(#ballGloss)" /></symbol>
+            <symbol id="bomb-symbol" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="var(--ball-bomb-bg)" /><path d="M43.5,31.5 C43.5,28.4624339 46.0375661,26 49.0751323,26 L50.9248677,26 C53.9624339,26 56.5,28.4624339 56.5,31.5 L56.5,33.5 C59.5375661,33.5 62,35.9624339 62,39 L62,54 C62,59.5228475 57.5228475,64 52,64 L48,64 C42.4771525,64 38,59.5228475 38,54 L38,39 C38,35.9624339 40.4624339,33.5 43.5,33.5 L43.5,31.5 Z M70.3636364,29.7272727 C72.5454545,27.5454545 73.6363636,25.3636364 73.6363636,23.1818182 C73.6363636,21 72.5454545,18.8181818 70.3636364,16.6363636" stroke="var(--ball-bomb-icon)" stroke-width="5" fill="none" transform="translate(0, 5)"/><circle cx="50" cy="50" r="50" fill="url(#ballGloss)" /></symbol>
+            <symbol id="chameleon-symbol" viewBox="0 0 100 100"><defs><radialGradient id="g" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="hsl(0, 100%, 70%)" /><stop offset="25%" stop-color="hsl(90, 100%, 70%)" /><stop offset="50%" stop-color="hsl(180, 100%, 70%)" /><stop offset="75%" stop-color="hsl(270, 100%, 70%)" /><stop offset="100%" stop-color="hsl(0, 100%, 70%)" /></radialGradient></defs><circle cx="50" cy="50" r="50" fill="url(#g)" /><circle cx="50" cy="50" r="50" fill="url(#ballGloss)" /></symbol>
+            <symbol id="color-bomb-symbol" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="var(--ball-bomb-bg)" /><path d="M50 25 A 25 25 0 0 1 75 50 L 50 50 Z" fill="var(--ball-brick-red)"/><path d="M50 25 A 25 25 0 0 1 50 75 L 50 50 Z" fill="var(--ball-dark-blue)"/><path d="M50 75 A 25 25 0 0 1 25 50 L 50 50 Z" fill="var(--ball-green)"/><path d="M25 50 A 25 25 0 0 1 50 25 L 50 50 Z" fill="var(--ball-lemon-yellow)"/><circle cx="50" cy="50" r="50" fill="url(#ballGloss)" /></symbol>
+            <symbol id="stone-symbol" viewBox="0 0 100 100"><path d="M50 0 L100 28 L85 80 L15 80 L0 28 Z" fill="var(--ball-stone-bg)" stroke="var(--ball-stone-border)" stroke-width="5" /></symbol>
+        </defs>
+    </svg>
+
+    <main class="game-layout">
+        <div id="game-board"></div>
+        <div class="game-ui-panel">
+             <div class="ui-box"><h2>Pontszám</h2><span id="score" class="value">0</span></div>
+             <div class="ui-box"><h2>Rekord</h2><span id="high-score" class="value">0</span></div>
+             <div class="ui-box"><h2>Kombó</h2><span id="combo-counter" class="value">x0</span></div>
+             <div><h2>Következő</h2><div id="next-balls-preview"></div></div>
+             <div><button id="undo-button" class="ui-button"><svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" /></svg><span>Vissza (<span id="undo-count">3</span>)</span></button></div>
+             <div class="abilities-box">
+                <h2>Képesség Sáv</h2>
+                <div class="ability-bar-container"><div id="ability-bar-fill"></div></div>
+                <button id="color-bomb-button" class="ui-button" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.141-6.445 5.5 5.5 0 0110.02 4.966l3.434 3.435a1 1 0 01-1.414 1.414l-3.434-3.435zM10 3a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 0110 3zM6.2 6.2a.75.75 0 010 1.061l-1.06 1.06a.75.75 0 01-1.06-1.06l1.06-1.06a.75.75 0 011.06 0zM3.75 10a.75.75 0 01.75-.75h1.5a.75.75 0 010 1.5h-1.5a.75.75 0 01-.75-.75zm2.5 3.55a.75.75 0 011.06 0l1.06 1.06a.75.75 0 11-1.06 1.06l-1.06-1.06a.75.75 0 010-1.06zM10 15.25a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5a.75.75 0 01.75-.75zm3.55-2.5a.75.75 0 010 1.06l-1.06 1.06a.75.75 0 11-1.06-1.06l1.06-1.06a.75.75 0 011.06 0z" clip-rule="evenodd" /></svg>
+                    <span>Színbomba (<span id="color-bomb-count">0</span>)</span>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- === ÚJ: JÁTÉKSZABÁLYZAT DOBOZ === -->
+    <div class="rules-container">
+        <h2>Játékszabályzat</h2>
+
+        <h3>Cél a játékban</h3>
+        <p>A játék célja, hogy a lehető legmagasabb pontszámot érd el. Ezt úgy teheted meg, hogy azonos színű golyókat rendezel sorokba a játéktáblán, mielőtt az teljesen megtelne.</p>
+
+        <h3>Az Alapok: Hogyan Játssz?</h3>
+        <ol>
+            <li><strong>Alkoss Sorokat:</strong> Rendezz legalább <strong>5 azonos színű golyót</strong> egy vonalba. A vonal lehet vízszintes, függőleges vagy átlós.</li>
+            <li><strong>Mozgatás:</strong> Kattints egy golyóra a kijelöléséhez, majd egy üres mezőre a táblán, ahová mozgatni szeretnéd. <strong>Fontos:</strong> A golyó csak akkor tud elmozdulni, ha van szabad útvonal (üres mezőkön keresztül) a célmezőig.</li>
+            <li><strong>Új Golyók:</strong> Ha a lépéseddel <strong>nem</strong> sikerül sort kiraknod, 3 új golyó jelenik meg a táblán. Ha sikerül egy sort eltávolítanod, nem kapsz új golyókat abban a körben.</li>
+        </ol>
+
+        <h3>Pontozás és Kombók</h3>
+        <ul>
+            <li><strong>Alap Pontozás:</strong> Minden eltávolított golyó 10 pontot ér. Minél hosszabb a sor, annál több bónuszpontot kapsz.</li>
+            <li><strong>Kombó Számláló:</strong> Ha több körön keresztül megszakítás nélkül sikerül sorokat kiraknod, egyre növekvő <strong>pontszorzót (kombót)</strong> kapsz. Ha egy lépésed nem eredményez sort, a kombó megszakad.</li>
+        </ul>
+
+        <h3>Különleges Elemek a Táblán</h3>
+        <h4>Bomba</h4>
+        <p>Jelöld ki, majd mozdítsd egy üres mezőre. A célmezőre érve felrobban, és a körüli <strong>3x3-as területen minden elemet</strong> (golyót, sőt követ is!) eltávolít.</p>
+        <h4>Kaméleon Golyó (Joker)</h4>
+        <p>Ez a tarka golyó <strong>bármilyen színként</strong> funkcionálhat egy sor kiegészítéséhez.</p>
+        <h4>Kő Akadály</h4>
+        <p>Mozdíthatatlan elem. Csak úgy távolítható el, ha egy <strong>bomba</strong> robbanása éri, vagy ha <strong>közvetlenül mellette</strong> egy sort sikerül kiraknod.</p>
+
+        <h3>Képességek</h3>
+        <h4>Képesség Sáv és Színbomba</h4>
+        <p>Minden eltávolított golyó tölti a lila <strong>Képesség Sávot</strong>. Ha megtelik, jutalmul kapsz egy <strong>Színbombát</strong>. Aktiválás után kattints egy színre a pályán, és az összes olyan színű golyó megsemmisül.</p>
+    </div>
+    <!-- ==================================== -->
+    
+    <div id="game-over-screen" class="game-over-overlay">
+        <div class="game-over-box">Játék Vége</div>
+        <button id="restart-button" class="ui-button" style="width: auto; padding: 14px 35px;">Új Játék</button>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const config = {
+            GRID_SIZE: 14,
+            COLORS: ['green', 'purple', 'orange', 'lemon-yellow', 'dark-brown', 'dark-blue', 'brick-red'],
+            MIN_LINE_LENGTH: 5, BALLS_PER_TURN: 3, INITIAL_BALLS: 5, INITIAL_UNDOS: 3,
+            BOMB_CHANCE: 0.07, CHAMELEON_CHANCE: 0.05, STONE_CHANCE: 0.04,
+            ABILITY_CHARGE_PER_BALL: 3.5, ABILITY_CHARGE_GOAL: 100
+        };
+
+        let state = {
+            board: [], score: 0, highScore: localStorage.getItem('colorLinesHighScore_v8') || 0,
+            selectedItem: null, nextItems: [], undoState: null, undoCount: config.INITIAL_UNDOS,
+            isAnimating: false,
+            comboCounter: 0, abilityCharge: 0, activeAbility: null,
+            earnedAbilities: { colorBomb: 0 }
+        };
+
+        const DOMElements = {
+            board: document.getElementById('game-board'), score: document.getElementById('score'),
+            highScore: document.getElementById('high-score'), nextBalls: document.getElementById('next-balls-preview'),
+            undoButton: document.getElementById('undo-button'), undoCount: document.getElementById('undo-count'),
+            gameOverScreen: document.getElementById('game-over-screen'), restartButton: document.getElementById('restart-button'),
+            pathOverlay: null,
+            comboCounter: document.getElementById('combo-counter'),
+            abilityBarFill: document.getElementById('ability-bar-fill'),
+            colorBombButton: document.getElementById('color-bomb-button'),
+            colorBombCount: document.getElementById('color-bomb-count'),
+        };
+
+        function initGame() {
+            Object.assign(state, {
+                score: 0, undoCount: config.INITIAL_UNDOS, isAnimating: false, selectedItem: null,
+                undoState: null, comboCounter: 0, abilityCharge: 0, activeAbility: null,
+                earnedAbilities: { colorBomb: 0 }
+            });
+            DOMElements.board.textContent = '';
+            document.body.appendChild(DOMElements.gameOverScreen);
+            DOMElements.gameOverScreen.classList.remove('visible');
+            const svgOverlay = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svgOverlay.id = 'path-overlay'; DOMElements.board.appendChild(svgOverlay); DOMElements.pathOverlay = svgOverlay;
+
+            for (let r = 0; r < config.GRID_SIZE; r++) {
+                for (let c = 0; c < config.GRID_SIZE; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell'; cell.dataset.r = r; cell.dataset.c = c;
+                    cell.addEventListener('click', () => onCellClick(r, c));
+                    cell.addEventListener('mouseover', () => onCellHover(r, c));
+                    cell.addEventListener('mouseout', clearPreviews);
+                    DOMElements.board.appendChild(cell);
+                }
+            }
+            state.board = Array(config.GRID_SIZE).fill(null).map(() => Array(config.GRID_SIZE).fill(null));
+            generateNextItems(); updateUI();
+            addRandomItems(config.INITIAL_BALLS, false);
+        }
+
+        function createItemSVG(item, isGhost = false) {
+            const itemWrapper = document.createElement('div');
+            itemWrapper.className = `ball ${isGhost ? 'ghost' : ''}`;
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+            svg.setAttribute('viewBox', '0 0 100 100');
+            
+            const symbolMap = {
+                bomb: '#bomb-symbol', chameleon: '#chameleon-symbol', stone: '#stone-symbol',
+                colorBomb: '#color-bomb-symbol', ball: '#ball-symbol'
+            };
+            use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', symbolMap[item.type]);
+
+            if (item.type === 'ball') svg.style.setProperty('--ball-color', `var(--ball-${item.color})`);
+            if (item.type === 'stone') itemWrapper.classList.add('stone');
+
+            svg.appendChild(use); itemWrapper.appendChild(svg); return itemWrapper;
+        }
+
+        function onCellClick(r, c) {
+            if (state.isAnimating) return;
+            
+            if (state.activeAbility) {
+                handleAbilityUse(r, c);
+                return;
+            }
+
+            const clickedItem = state.board[r][c];
+            const selectedEl = document.querySelector('.selected');
+            clearPreviews();
+
+            if (clickedItem && clickedItem.type !== 'stone') {
+                if (state.selectedItem && state.selectedItem.r === r && state.selectedItem.c === c) {
+                    state.selectedItem = null; selectedEl.classList.remove('selected'); return;
+                }
+                if (selectedEl) selectedEl.classList.remove('selected');
+                state.selectedItem = { r, c, type: clickedItem.type, color: clickedItem.color };
+                getCell(r, c).querySelector('.ball').classList.add('selected');
+            } else if (state.selectedItem) {
+                const path = findPath(state.selectedItem.r, state.selectedItem.c, r, c);
+                if (path) {
+                    const itemType = state.selectedItem.type;
+                    if (itemType === 'bomb') moveAndExplodeBomb(state.selectedItem, { r, c }, path);
+                    else moveBall(state.selectedItem, { r, c }, path);
+                } else if (selectedEl) {
+                    selectedEl.classList.add('shake');
+                    setTimeout(() => selectedEl.classList.remove('shake'), 500);
+                }
+            }
+        }
+        
+        async function runGameTurn(linesRemoved) {
+            if (!linesRemoved) {
+                state.comboCounter = 0;
+                await addRandomItems(config.BALLS_PER_TURN);
+            }
+            if (state.score > state.highScore) {
+                state.highScore = state.score;
+                localStorage.setItem('colorLinesHighScore_v8', state.highScore);
+            }
+            updateUI();
+            state.isAnimating = false;
+        }
+
+        async function moveBall(fromPos, toPos, path) {
+            saveUndoState(); state.isAnimating = true;
+            const ballEl = getCell(fromPos.r, fromPos.c).querySelector('.ball');
+            ballEl.classList.remove('selected');
+
+            const animation = ballEl.animate(
+                path.map(p => ({ transform: `translate(${(p.c - fromPos.c) * ballEl.parentElement.offsetWidth}px, ${(p.r - fromPos.r) * ballEl.parentElement.offsetWidth}px)` })),
+                { duration: path.length * 60 + 100, easing: 'cubic-bezier(0.65, 0, 0.35, 1)' }
+            );
+            await animation.finished;
+
+            getCell(toPos.r, toPos.c).appendChild(ballEl);
+            state.board[toPos.r][toPos.c] = { type: fromPos.type, color: fromPos.color };
+            state.board[fromPos.r][fromPos.c] = null; state.selectedItem = null;
+
+            const linesRemoved = await checkForLinesAndRemove();
+            runGameTurn(linesRemoved);
+        }
+        
+        async function moveAndExplodeBomb(fromPos, toPos, path) {
+            saveUndoState(); state.isAnimating = true;
+            const bombEl = getCell(fromPos.r, fromPos.c).querySelector('.ball');
+            bombEl.classList.remove('selected');
+
+            const animation = bombEl.animate(
+                path.map(p => ({ transform: `translate(${(p.c - fromPos.c) * bombEl.parentElement.offsetWidth}px, ${(p.r - fromPos.r) * bombEl.parentElement.offsetWidth}px)` })),
+                { duration: path.length * 60 + 100, easing: 'cubic-bezier(0.65, 0, 0.35, 1)' }
+            );
+            await animation.finished;
+            
+            state.board[fromPos.r][fromPos.c] = null; bombEl.remove(); state.selectedItem = null;
+
+            const toRemove = new Set();
+            for (let dr = -1; dr <= 1; dr++) {
+                for (let dc = -1; dc <= 1; dc++) {
+                    const r = toPos.r + dr, c = toPos.c + dc;
+                    if (r >= 0 && r < config.GRID_SIZE && c >= 0 && c < config.GRID_SIZE && state.board[r][c]) {
+                        toRemove.add(`${r}-${c}`);
+                    }
+                }
+            }
+            if (toRemove.size > 0) removeItems(toRemove, toRemove.size * 10, `${toPos.r}-${toPos.c}`);
+            
+            const explosion = document.createElement('div');
+            explosion.className = 'explosion-effect';
+            getCell(toPos.r, toPos.c).appendChild(explosion);
+            setTimeout(() => explosion.remove(), 400);
+
+            await new Promise(resolve => setTimeout(resolve, 400));
+            generateNextItems(); runGameTurn(true);
+        }
+
+        async function checkForLinesAndRemove() {
+            const toRemove = new Set();
+            const directions = [{r:0,c:1},{r:1,c:0},{r:1,c:1},{r:1,c:-1}];
+            for (let r = 0; r < config.GRID_SIZE; r++) {
+                for (let c = 0; c < config.GRID_SIZE; c++) {
+                    const item = state.board[r][c];
+                    if (!item || item.type !== 'ball') continue;
+                    for (const dir of directions) {
+                        const line = [{r,c}];
+                        for (let i = 1; i < config.GRID_SIZE; i++) {
+                            const cr = r + i * dir.r, cc = c + i * dir.c;
+                            if (cr<0||cr>=config.GRID_SIZE||cc<0||cc>=config.GRID_SIZE) break;
+                            const nextItem = state.board[cr][cc];
+                            if (nextItem?.type === 'chameleon') { line.push({r:cr,c:cc}); continue; }
+                            if (nextItem?.type === 'ball' && nextItem.color === item.color) { line.push({r:cr, c:cc}); continue; }
+                            break;
+                        }
+                        if (line.length >= config.MIN_LINE_LENGTH) line.forEach(p => toRemove.add(`${p.r}-${p.c}`));
+                    }
+                }
+            }
+            if (toRemove.size > 0) {
+                state.comboCounter++;
+                const comboBonus = (state.comboCounter > 1) ? Math.pow(state.comboCounter, 2) * 10 : 0;
+                let scoreToAdd = (toRemove.size * 10) + Math.pow(Math.max(0, toRemove.size - config.MIN_LINE_LENGTH), 2) * 20 + comboBonus;
+                await removeItems(toRemove, scoreToAdd);
+                
+                state.abilityCharge += toRemove.size * config.ABILITY_CHARGE_PER_BALL;
+                if(state.abilityCharge >= config.ABILITY_CHARGE_GOAL) {
+                    state.earnedAbilities.colorBomb++;
+                    state.abilityCharge -= config.ABILITY_CHARGE_GOAL;
+                }
+                return true;
+            }
+            return false;
+        }
+        
+        async function removeItems(itemSet, score, popupCoordsKey) {
+            state.score += Math.floor(score);
+            showScorePopup(score, popupCoordsKey ? [popupCoordsKey] : [...itemSet]);
+            for (const key of itemSet) {
+                const [r, c] = key.split('-').map(Number);
+                state.board[r][c] = null;
+                getCell(r, c)?.querySelector('.ball:not(.ghost)')?.classList.add('popping');
+            }
+            await new Promise(resolve => setTimeout(resolve, 400));
+            document.querySelectorAll('.ball.popping').forEach(b => b.remove());
+        }
+
+        async function addRandomItems(count, checkForLines = true) {
+            const emptyCells = [];
+            for (let r=0; r<config.GRID_SIZE; r++) for (let c=0; c<config.GRID_SIZE; c++) if (!state.board[r][c]) emptyCells.push({r,c});
+            if (emptyCells.length < count) { gameOver(); return; }
+
+            const itemsToPlace = (count === config.BALLS_PER_TURN) ? [...state.nextItems] : Array(count).fill(null).map(() => generateRandomItem(false));
+            for (const item of itemsToPlace) {
+                if(emptyCells.length === 0) break;
+                const randIndex = Math.floor(Math.random() * emptyCells.length);
+                const { r, c } = emptyCells.splice(randIndex, 1)[0];
+                state.board[r][c] = item;
+                placeItemOnBoard(r, c, item, true);
+                await new Promise(res => setTimeout(res, 60));
+            }
+            
+            if (count === config.BALLS_PER_TURN && Math.random() < config.STONE_CHANCE && emptyCells.length > 0) {
+                const randIndex = Math.floor(Math.random() * emptyCells.length);
+                const { r, c } = emptyCells.splice(randIndex, 1)[0];
+                const stone = {type: 'stone'};
+                state.board[r][c] = stone; placeItemOnBoard(r, c, stone, true);
+            }
+
+            if (count === config.BALLS_PER_TURN) generateNextItems();
+            updateUI();
+            if(checkForLines) await checkForLinesAndRemove();
+        }
+
+        function generateRandomItem(allowBomb = true) {
+            const rand = Math.random();
+            if (allowBomb && rand < config.BOMB_CHANCE) return { type: 'bomb' };
+            if (rand < config.BOMB_CHANCE + config.CHAMELEON_CHANCE) return { type: 'chameleon' };
+            return { type: 'ball', color: config.COLORS[Math.floor(Math.random() * config.COLORS.length)] };
+        }
+        
+        function generateNextItems() { state.nextItems = Array(config.BALLS_PER_TURN).fill(null).map(() => generateRandomItem()); }
+
+        function updateUI() {
+            DOMElements.score.textContent = state.score; DOMElements.highScore.textContent = state.highScore;
+            DOMElements.undoCount.textContent = state.undoCount;
+            DOMElements.undoButton.disabled = state.undoCount === 0 || !state.undoState || state.isAnimating;
+            DOMElements.nextBalls.innerHTML = '';
+            state.nextItems.forEach(item => DOMElements.nextBalls.appendChild(createItemSVG(item)));
+            DOMElements.comboCounter.textContent = `x${state.comboCounter}`;
+            DOMElements.abilityBarFill.style.width = `${Math.min(100, (state.abilityCharge / config.ABILITY_CHARGE_GOAL) * 100)}%`;
+            DOMElements.colorBombCount.textContent = state.earnedAbilities.colorBomb;
+            DOMElements.colorBombButton.disabled = state.earnedAbilities.colorBomb === 0 || state.isAnimating;
+        }
+
+        function activateAbility(abilityType) {
+            if (state.isAnimating) return;
+            if (abilityType === 'colorBomb' && state.earnedAbilities.colorBomb > 0) {
+                state.activeAbility = 'colorBomb';
+                document.body.classList.add('ability-active');
+            }
+        }
+
+        async function handleAbilityUse(r, c) {
+            const item = state.board[r][c];
+            if (state.activeAbility === 'colorBomb') {
+                if (item && item.type === 'ball') {
+                    state.isAnimating = true;
+                    state.earnedAbilities.colorBomb--;
+                    const toRemove = new Set();
+                    for (let row = 0; row < config.GRID_SIZE; row++) {
+                        for (let col = 0; col < config.GRID_SIZE; col++) {
+                            const currentItem = state.board[row][col];
+                            if (currentItem?.color === item.color) {
+                                toRemove.add(`${row}-${col}`);
+                            }
+                        }
+                    }
+                    await removeItems(toRemove, toRemove.size * 10, `${r}-${c}`);
+                    generateNextItems(); runGameTurn(true);
+                }
+            }
+            state.activeAbility = null;
+            document.body.classList.remove('ability-active');
+        }
+
+        function onCellHover(r, c) { clearPreviews(); if (state.isAnimating || !state.selectedItem || state.board[r][c]) return; const path = findPath(state.selectedItem.r, state.selectedItem.c, r, c); if (path) { drawPath(path); const ghostItem = createItemSVG(state.selectedItem, true); getCell(r, c).appendChild(ghostItem); }}
+        function placeItemOnBoard(r, c, item, spawnAnim = false) { const itemEl = createItemSVG(item); if (spawnAnim) itemEl.classList.add('spawning'); getCell(r, c).appendChild(itemEl); }
+        function findPath(fromR, fromC, toR, toC) { const originalCell = state.board[fromR][fromC]; state.board[fromR][fromC] = null; const q = [[{ r: fromR, c: fromC }]]; const v = new Set([`${fromR}-${fromC}`]); let foundPath = null; while (q.length > 0) { const p = q.shift(); const { r, c } = p[p.length - 1]; if (r === toR && c === toC) { foundPath = p; break; } const n = [{ r: r - 1, c }, { r: r + 1, c }, { r, c: c - 1 }, { r, c: c + 1 }]; for (const { r: nr, c: nc } of n) { const k = `${nr}-${nc}`; if (nr >= 0 && nr < config.GRID_SIZE && nc >= 0 && nc < config.GRID_SIZE && !state.board[nr][nc] && !v.has(k)) { v.add(k); q.push([...p, { r: nr, c: nc }]); } } } state.board[fromR][fromC] = originalCell; return foundPath; }
+        function saveUndoState() { state.undoState = { board: JSON.parse(JSON.stringify(state.board)), score: state.score, comboCounter: state.comboCounter, abilityCharge: state.abilityCharge, earnedAbilities: JSON.parse(JSON.stringify(state.earnedAbilities)) }; }
+        function handleUndo() { if (state.undoCount > 0 && state.undoState && !state.isAnimating) { state.isAnimating = true; Object.assign(state, { board: JSON.parse(JSON.stringify(state.undoState.board)), score: state.undoState.score, comboCounter: state.undoState.comboCounter, abilityCharge: state.undoState.abilityCharge, earnedAbilities: JSON.parse(JSON.stringify(state.undoState.earnedAbilities)), undoCount: state.undoCount - 1, undoState: null }); DOMElements.board.querySelectorAll('.ball').forEach(b => b.remove()); for (let r = 0; r < config.GRID_SIZE; r++) for (let c = 0; c < config.GRID_SIZE; c++) { if (state.board[r][c]) placeItemOnBoard(r, c, state.board[r][c]); } updateUI(); state.isAnimating = false; } }
+        function gameOver() { DOMElements.gameOverScreen.classList.add('visible'); state.isAnimating = true; }
+        function clearPreviews() { if (DOMElements.pathOverlay) DOMElements.pathOverlay.innerHTML = ''; document.querySelector('.ball.ghost')?.remove(); }
+        function getCell(r, c) { return document.querySelector(`.cell[data-r='${r}'][data-c='${c}']`); }
+        function showScorePopup(points, positionKeys) { const popup = document.createElement('div'); popup.textContent = `+${Math.floor(points)}`; popup.className = 'score-popup'; let avgR = 0, avgC = 0; positionKeys.forEach(key => { const [r, c] = key.split('-'); avgR += parseInt(r); avgC += parseInt(c); }); avgR /= positionKeys.length; avgC /= positionKeys.length; popup.style.left = `${avgC * getCell(0,0).offsetWidth}px`; popup.style.top = `${avgR * getCell(0,0).offsetHeight}px`; DOMElements.board.appendChild(popup); setTimeout(() => popup.remove(), 1200); }
+        function drawPath(path) { const cellSize = getCell(0, 0).offsetWidth; const points = path.map(p => `${p.c * cellSize + cellSize / 2},${p.r * cellSize + cellSize / 2}`).join(' '); const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline'); polyline.setAttribute('points', points); polyline.id = 'path-line'; DOMElements.pathOverlay.innerHTML = ''; DOMElements.pathOverlay.appendChild(polyline); }
+
+        DOMElements.restartButton.addEventListener('click', initGame);
+        DOMElements.undoButton.addEventListener('click', handleUndo);
+        DOMElements.colorBombButton.addEventListener('click', () => activateAbility('colorBomb'));
+        initGame();
+    });
+    </script>
+</body>
+</html>
