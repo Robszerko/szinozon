@@ -3,580 +3,835 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Színözön Játék</title>
+    <title>Színözön: Bármilyen Forma (1000 Szint)</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap');
 
         :root {
-            --grid-size: 14;
-            --cell-size: min(80vmin / var(--grid-size), 60px);
-            --color-bg: #111827; --color-panel-bg: #1f2937; --color-board-bg: #1f2937;
-            --color-border: #374151; --color-text-primary: #f9fafb; --color-text-secondary: #9ca3af;
-            --color-accent: #818cf8; --color-accent-hover: #6366f1; --color-shadow: rgba(0, 0, 0, 0.2);
-
-            --ball-green: #22c55e;
-            --ball-purple: #a855f7;
-            --ball-orange: #f97316;
-            --ball-lemon-yellow: #facc15;
-            --ball-dark-brown: #854d0e;
-            --ball-dark-blue: #1d4ed8;
-            --ball-brick-red: #b91c1c;
-
-            --ball-bomb-bg: #374151; --ball-bomb-icon: #f9fafb;
-            --ball-stone-bg: #6b7280; --ball-stone-border: #4b5563;
+            --grid-size: 8;
+            --cell-size: min(70vmin / var(--grid-size), 65px);
+            --color-bg: #050505; --color-panel-bg: #111; --color-board-bg: #0a0a0a;
+            --color-border: #333; --color-text-primary: #fff; --color-text-secondary: #aaa;
+            --color-accent: #f43f5e; --color-success: #10b981;
+            
+            --ball-green: #10b981; --ball-purple: #a855f7; --ball-orange: #f97316;
+            --ball-yellow: #facc15; --ball-magenta: #ec4899; --ball-blue: #3b82f6; 
+            --ball-red: #ef4444; --ball-cyan: #06b6d4;
         }
 
         body {
-            font-family: 'Inter', sans-serif; display: flex; flex-direction: column; justify-content: center; align-items: center;
-            min-height: 100vh; background-color: var(--color-bg); margin: 0; padding: 40px 20px; box-sizing: border-box;
-            color: var(--color-text-primary);
-        }
-        body.ability-active { cursor: crosshair; }
-
-        .page-header {
-            margin-bottom: 20px;
-            width: 100%;
-            display: flex;
-            justify-content: center;
-        }
-        .page-header svg {
-            max-width: 500px;
-            width: 100%;
-            height: auto;
+            font-family: 'Inter', sans-serif; display: flex; flex-direction: column; justify-content: flex-start; align-items: center;
+            min-height: 100vh; background-color: var(--color-bg); margin: 0; padding: 20px; box-sizing: border-box;
+            color: var(--color-text-primary); overflow-x: hidden; transition: box-shadow 0.3s ease;
         }
 
-        .game-layout { display: flex; gap: 30px; align-items: flex-start; justify-content: center; width: 100%; }
+        body.ability-active { cursor: crosshair; box-shadow: inset 0 0 150px rgba(244, 63, 94, 0.4); }
 
+        .page-header { margin-bottom: 5px; width: 100%; display: flex; justify-content: center; position: relative; z-index: 10; }
+        .page-header svg { max-width: 450px; width: 100%; height: auto; filter: drop-shadow(0 10px 20px rgba(0,0,0,1)); }
+
+        .game-layout { display: flex; gap: 30px; align-items: flex-start; justify-content: center; width: 100%; position: relative; z-index: 5; }
+
+        /* Játéktábla */
+        #game-board-container { position: relative; }
         #game-board {
             width: calc(var(--grid-size) * var(--cell-size)); height: calc(var(--grid-size) * var(--cell-size));
             display: grid; grid-template-columns: repeat(var(--grid-size), 1fr); background-color: var(--color-board-bg);
-            border-radius: 16px; box-shadow: 0 10px 30px var(--color-shadow); position: relative;
-            border: 1px solid var(--color-border); user-select: none;
+            border-radius: 12px; box-shadow: 0 0 50px rgba(244,63,94,0.1), inset 0 0 30px rgba(0,0,0,0.8); 
+            position: relative; border: 4px solid #222; user-select: none; transition: width 0.4s, height 0.4s, grid-template-columns 0.4s;
         }
+
+        /* Remegés effektek */
+        .shake-hard { animation: shake-hard 0.3s cubic-bezier(.36,.07,.19,.97) both; }
+        .shake-mega { animation: shake-mega 0.5s cubic-bezier(.36,.07,.19,.97) both; filter: drop-shadow(0 0 30px var(--color-accent)); }
+        
+        @keyframes shake-hard { 0%, 100% { transform: translate(0, 0); } 20%, 60% { transform: translate(-5px, 5px); } 40%, 80% { transform: translate(5px, -5px); } }
+        @keyframes shake-mega { 0%, 100% { transform: translate(0, 0) scale(1); } 10%, 30%, 50%, 70%, 90% { transform: translate(-10px, -10px) scale(1.02) rotate(-2deg); } 20%, 40%, 60%, 80% { transform: translate(10px, 10px) scale(1.02) rotate(2deg); } }
 
         #path-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
-        #path-line { stroke: var(--color-accent); stroke-width: 3px; stroke-dasharray: 6 4; fill: none; stroke-linecap: round; filter: drop-shadow(0 0 3px var(--color-accent)); }
+        #path-line { stroke: rgba(255,255,255,0.4); stroke-width: 5px; stroke-dasharray: 10 10; fill: none; stroke-linecap: round; }
 
-        .cell { position: relative; border-right: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border); }
+        /* Cellák és Arany Mező */
+        .cell { position: relative; border-right: 1px solid rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.05); box-sizing: border-box; }
         .cell:nth-child(var(--grid-size)n) { border-right: none; }
         .cell:nth-last-child(-n + var(--grid-size)) { border-bottom: none; }
+        .cell.gold-cell { background: radial-gradient(circle, rgba(250, 204, 21, 0.4) 0%, transparent 70%); animation: pulse-gold 2s infinite alternate; }
+        @keyframes pulse-gold { from { box-shadow: inset 0 0 10px rgba(250, 204, 21, 0.2); } to { box-shadow: inset 0 0 30px rgba(250, 204, 21, 0.6); } }
 
+        /* Golyók */
         .ball {
-            width: 80%; height: 80%; position: absolute; top: 10%; left: 10%;
+            width: 86%; height: 86%; position: absolute; top: 7%; left: 7%;
             cursor: pointer; will-change: transform; z-index: 10;
-            filter: drop-shadow(0 2px 3px rgba(0,0,0,0.25));
+            filter: drop-shadow(0 5px 10px rgba(0,0,0,0.8)); transition: filter 0.2s, transform 0.2s;
         }
-        .ball.ghost { opacity: 0.4; pointer-events: none; filter: saturate(0.5); z-index: 6; }
-        .ball.stone { cursor: not-allowed; }
+        .ball:hover { filter: drop-shadow(0 8px 15px rgba(255,255,255,0.3)) brightness(1.2); transform: translateY(-3px) scale(1.05); }
+        .ball.ghost { opacity: 0.15; pointer-events: none; filter: grayscale(100%); z-index: 6; }
+        .ball.stone, .ball.virus, .ball.iced { cursor: not-allowed; }
+        .ball.virus { animation: slime-pulse 1.5s infinite; filter: drop-shadow(0 0 15px #16a34a); }
+        .ball.iced:hover { transform: none; filter: brightness(1.3); }
 
-        .ball.selected {
-            animation: select-spin 1.5s linear infinite;
-            filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5));
-        }
-        .ball.popping { animation: pop-out 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
-        .ball.spawning { animation: spawn 0.4s cubic-bezier(0.5, 1.5, 0.5, 1) forwards; }
-        .ball.shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
-        .explosion-effect { position: absolute; inset: 0; background-color: var(--color-accent); border-radius: 50%; animation: explode 0.4s ease-out forwards; z-index: 40; }
+        .ball.selected { animation: select-bounce 0.5s cubic-bezier(0.28, 0.84, 0.42, 1) infinite alternate; filter: drop-shadow(0 0 25px #fff) brightness(1.4); z-index: 20;}
+        .ball.spawning { animation: spawn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+        
+        .timer-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: 'Fredoka One', cursive; font-size: 35px; color: #fff; text-shadow: 0 2px 5px #000, 0 0 10px #ef4444; pointer-events: none; }
 
-        @keyframes select-spin { from { transform: scale(1.1) rotate(0deg); } to { transform: scale(1.1) rotate(360deg); } }
-        @keyframes pop-out { 0% { transform: scale(1) rotate(0deg); opacity: 1; } 50% { transform: scale(1.2) rotate(45deg); opacity: 0.5; } 100% { transform: scale(0) rotate(90deg); opacity: 0; } }
-        @keyframes spawn { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-        @keyframes shake { 10%, 90% { transform: translateX(-1px); } 20%, 80% { transform: translateX(2px); } 30%, 50%, 70% { transform: translateX(-4px); } 40%, 60% { transform: translateX(4px); } }
-        @keyframes explode { from { transform: scale(0); opacity: 0.7; } to { transform: scale(2.5); opacity: 0; } }
+        @keyframes select-bounce { from { transform: scale(1) translateY(0); } to { transform: scale(1.15) translateY(-15%); } }
+        @keyframes spawn { 0% { transform: scale(0) rotate(-90deg); opacity: 0; } 70% { transform: scale(1.3) rotate(10deg); opacity: 1; } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
+        @keyframes slime-pulse { 0%, 100% { transform: scale(0.95); } 50% { transform: scale(1.05); } }
 
-        .game-ui-panel { width: 250px; padding: 30px; background-color: var(--color-panel-bg); border-radius: 16px; box-shadow: 0 10px 30px var(--color-shadow); border: 1px solid var(--color-border); display: flex; flex-direction: column; gap: 20px; }
-        .ui-box { display: flex; justify-content: space-between; align-items: baseline; }
-        .ui-box h2 { font-size: 0.9em; margin: 0; color: var(--color-text-secondary); font-weight: 500; text-transform: uppercase; letter-spacing: 1px; }
-        .ui-box .value { font-size: 2.2em; font-weight: 700; color: var(--color-text-primary); line-height: 1; }
-        #next-balls-preview { display: flex; gap: 10px; height: 35px; align-items: center; }
-        #next-balls-preview .ball { position: static; width: 35px; height: 35px; }
+        /* Effektek */
+        .epic-explosion { position: absolute; pointer-events: none; z-index: 50; top: 50%; left: 50%; width: 250%; height: 250%; transform: translate(-50%, -50%); background: radial-gradient(circle, var(--exp-color) 0%, #fff 20%, transparent 70%); border-radius: 50%; mix-blend-mode: screen; animation: blast 0.5s cubic-bezier(0.1, 0.9, 0.2, 1) forwards; }
+        .shockwave { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 100%; height: 100%; border-radius: 50%; border: 5px solid var(--exp-color); pointer-events: none; z-index: 49; animation: shockwave 0.6s ease-out forwards; }
+        .laser-beam { position: absolute; background: #fff; box-shadow: 0 0 20px var(--exp-color), 0 0 40px var(--exp-color); pointer-events: none; z-index: 60; animation: laserFade 0.4s ease-out forwards; }
 
-        .ui-button { width: 100%; padding: 14px; font-size: 1.1em; font-weight: 500; cursor: pointer; border: none; background: var(--color-accent); color: var(--color-text-primary); border-radius: 12px; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 10px rgba(0,0,0, 0.2); }
-        .ui-button:hover:not(:disabled) { background: var(--color-accent-hover); transform: translateY(-2px); }
-        .ui-button:active:not(:disabled) { transform: translateY(0); }
-        .ui-button:disabled { background-color: #4b5563; color: #9ca3af; cursor: not-allowed; box-shadow: none; }
-        .ui-button svg { width: 22px; height: 22px; }
+        @keyframes blast { 0% { transform: translate(-50%, -50%) scale(0.1); opacity: 1; filter: brightness(2); } 100% { transform: translate(-50%, -50%) scale(1.8); opacity: 0; filter: brightness(1); } }
+        @keyframes shockwave { 0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; border-width: 15px; } 100% { transform: translate(-50%, -50%) scale(3); opacity: 0; border-width: 0px; } }
+        @keyframes laserFade { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(0); } }
 
-        .ability-bar-container { width: 100%; background-color: var(--color-bg); border-radius: 8px; padding: 4px; border: 1px solid var(--color-border); }
-        #ability-bar-fill { width: 0%; height: 16px; background-color: var(--color-accent); border-radius: 5px; transition: width 0.3s ease-out; }
-        .abilities-box .ui-button { margin-top: 8px; }
+        /* UI Panel */
+        .game-ui-panel { width: 320px; padding: 25px; background-color: var(--color-panel-bg); border-radius: 16px; box-shadow: 0 0 30px rgba(0,0,0,1); border: 2px solid #333; display: flex; flex-direction: column; gap: 20px; z-index: 10; }
+        
+        .level-badge { background: linear-gradient(135deg, #f43f5e, #fb923c); color: white; padding: 10px 15px; border-radius: 8px; font-weight: 900; font-size: 1.4em; text-align: center; letter-spacing: 2px; text-transform: uppercase; box-shadow: 0 5px 15px rgba(244, 63, 94, 0.4); text-shadow: 2px 2px 0px rgba(0,0,0,0.5); }
+        .boss-badge { background: linear-gradient(135deg, #991b1b, #ef4444); animation: pulse-boss 0.8s infinite alternate;}
+        @keyframes pulse-boss { from { filter: brightness(1); transform: scale(1); } to { filter: brightness(1.4); transform: scale(1.05); } }
 
-        .game-over-overlay { position: absolute; inset: 0; background-color: rgba(17, 24, 39, 0.85); display: flex; flex-direction: column; justify-content: center; align-items: center; opacity: 0; visibility: hidden; transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); backdrop-filter: blur(8px); border-radius: inherit; z-index: 100; }
-        .game-over-overlay.visible { opacity: 1; visibility: visible; }
-        .game-over-box { font-size: 3em; font-weight: 700; color: var(--color-text-primary); margin-bottom: 20px; }
+        .ui-box { display: flex; flex-direction: column; gap: 8px; background: #1a1a1a; padding: 15px; border-radius: 10px; border: 1px solid #2a2a2a; }
+        .ui-box.row { flex-direction: row; justify-content: space-between; align-items: baseline; background: none; padding: 0; border: none; }
+        .ui-box h2 { font-size: 0.85em; margin: 0; color: var(--color-text-secondary); font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; }
+        .ui-box .value { font-size: 2.8em; font-weight: 900; color: #fff; line-height: 1; font-family: 'Fredoka One', cursive; text-shadow: 2px 4px 0 #000; }
+        
+        /* Cél Sáv */
+        .goal-container { width: 100%; background-color: #000; border-radius: 8px; height: 30px; position: relative; border: 2px solid #333; overflow: hidden; }
+        #goal-bar-fill { height: 100%; background: linear-gradient(90deg, #10b981, #34d399, #10b981); background-size: 200% 100%; width: 0%; transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1); animation: shine 2s infinite linear; }
+        @keyframes shine { to { background-position: 200% center; } }
+        #goal-text { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 0.95em; font-weight: 900; color: white; text-shadow: 1px 1px 2px #000; z-index: 2; letter-spacing: 1px; }
 
-        .score-popup { position: absolute; color: var(--color-accent); font-size: calc(var(--cell-size) * 0.9); font-weight: bold; pointer-events: none; z-index: 50; text-shadow: 0 0 8px rgba(0,0,0,0.5); animation: fly-to-score 1.2s cubic-bezier(0.5, 0, 1, 0.5) forwards; }
-        @keyframes fly-to-score { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-120px) scale(0.5); } }
+        #next-balls-preview { display: flex; gap: 15px; height: 45px; align-items: center; justify-content: center; }
+        #next-balls-preview .ball { position: static; width: 45px; height: 45px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.8)); }
 
-        .rules-container {
-            margin-top: 40px;
-            padding: 30px 35px;
-            background-color: var(--color-panel-bg);
-            border-radius: 16px;
-            box-shadow: 0 10px 30px var(--color-shadow);
-            border: 1px solid var(--color-border);
-            max-width: 1000px;
-            width: 95%;
-        }
-        .rules-container h2 {
-            font-size: 2em;
-            color: var(--color-accent);
-            text-align: center;
-            margin-top: 0;
-            margin-bottom: 25px;
-            border-bottom: 2px solid var(--color-border);
-            padding-bottom: 15px;
-        }
-        .rules-container h3 {
-            font-size: 1.4em;
-            color: var(--color-text-primary);
-            margin-top: 25px;
-            margin-bottom: 10px;
-            border-left: 4px solid var(--color-accent);
-            padding-left: 10px;
-        }
-        .rules-container h4 {
-            font-size: 1.1em;
-            color: var(--color-accent);
-            margin-top: 15px;
-            margin-bottom: 5px;
-        }
-        .rules-container p, .rules-container li {
-            font-size: 0.95em;
-            color: var(--color-text-secondary);
-            line-height: 1.6;
-        }
-        .rules-container ul, .rules-container ol {
-            padding-left: 25px;
-        }
-        .rules-container li {
-            margin-bottom: 8px;
-        }
-        .rules-container strong {
-            color: var(--color-text-primary);
-            font-weight: 700;
-        }
+        /* Gombok */
+        .ui-button { width: 100%; padding: 18px; font-size: 1.1em; font-weight: 800; cursor: pointer; border: none; background: #222; color: #fff; border-radius: 8px; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 6px 0 #000; text-transform: uppercase; letter-spacing: 1px; }
+        .ui-button.primary { background: linear-gradient(to bottom, #f43f5e, #e11d48); box-shadow: 0 6px 0 #881337; }
+        .ui-button.primary:hover:not(:disabled) { transform: translateY(2px); box-shadow: 0 4px 0 #881337; filter: brightness(1.2); }
+        .ui-button.primary:active:not(:disabled) { transform: translateY(6px); box-shadow: 0 0 0 #881337; }
+        
+        .ui-button:hover:not(:disabled) { transform: translateY(2px); box-shadow: 0 4px 0 #000; background: #333; }
+        .ui-button:active:not(:disabled) { transform: translateY(6px); box-shadow: 0 0 0 #000; }
+        .ui-button:disabled { filter: grayscale(100%); opacity: 0.4; cursor: not-allowed; box-shadow: 0 6px 0 #000; transform: none; }
 
-        @media (max-width: 1024px) { .game-layout { flex-direction: column; align-items: center; } .game-ui-panel { width: calc(var(--grid-size) * var(--cell-size)); order: -1; } }
+        .ability-bar-container { width: 100%; background-color: #000; border-radius: 4px; padding: 3px; border: 1px solid #333; }
+        #ability-bar-fill { width: 0%; height: 12px; background: linear-gradient(90deg, #f43f5e, #fb923c); border-radius: 2px; transition: width 0.3s ease-out; box-shadow: 0 0 10px rgba(244, 63, 94, 0.8); }
+
+        /* Lebegő szövegek */
+        .floating-text { position: absolute; font-family: 'Fredoka One', cursive; pointer-events: none; z-index: 80; animation: float-up 1.5s cubic-bezier(0.1, 0.9, 0.2, 1) forwards; text-align: center; text-transform: uppercase; }
+        .score-text { color: #fff; font-size: calc(var(--cell-size) * 0.8); text-shadow: 0 5px 10px #000, 0 0 15px var(--color-success); }
+        .combo-text { color: #facc15; font-size: calc(var(--cell-size) * 1.2); text-shadow: 0 5px 10px #000, 0 0 20px #f97316; }
+        .mega-text { color: #0ff; font-size: calc(var(--cell-size) * 1.5); text-shadow: 0 5px 15px #000, 0 0 30px #0ff; animation: mega-float 2s forwards; }
+        @keyframes float-up { 0% { opacity: 0; transform: translateY(20px) scale(0.5); } 20% { opacity: 1; transform: translateY(0) scale(1.2); } 100% { opacity: 0; transform: translateY(-100px) scale(0.8); } }
+        @keyframes mega-float { 0% { opacity: 0; transform: scale(0.1) rotate(-10deg); } 15% { opacity: 1; transform: scale(1.5) rotate(5deg); } 30% { transform: scale(1) rotate(0deg); } 100% { opacity: 0; transform: translateY(-150px) scale(1.5); } }
+
+        /* Szint bemondó */
+        #level-announcer { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.1); font-family: 'Fredoka One', cursive; font-size: 6vw; color: white; text-shadow: 0 10px 30px #000, 0 0 40px var(--color-accent); z-index: 100; opacity: 0; pointer-events: none; transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); white-space: nowrap; text-align: center; line-height: 1.1; }
+        #level-announcer.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+
+        /* Overlays */
+        .overlay { position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; opacity: 0; visibility: hidden; transition: all 0.3s ease; backdrop-filter: blur(10px); z-index: 200; padding: 20px; text-align: center; }
+        .overlay.visible { opacity: 1; visibility: visible; }
+        .overlay-card { background: #111; padding: 40px; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,1), inset 0 0 0 2px #333; max-width: 600px; width: 100%; display: flex; flex-direction: column; gap: 20px; transform: translateY(50px); transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .overlay.visible .overlay-card { transform: translateY(0); }
+        
+        .overlay-title { font-size: 4.5em; font-weight: 900; margin: 0; font-family: 'Fredoka One', cursive; text-shadow: 0 5px 15px #000; }
+        .title-win { color: var(--color-success); text-shadow: 0 5px 15px #000, 0 0 30px var(--color-success); }
+        .title-lose { color: var(--color-accent); }
+        .title-menu { background: linear-gradient(180deg, #fff, #aaa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 5.5em; margin-bottom: 0; filter: drop-shadow(0 5px 10px #000); }
+
+        @media (max-width: 1024px) { 
+            .game-layout { flex-direction: column; align-items: center; } 
+            .game-ui-panel { width: calc(var(--grid-size) * var(--cell-size)); max-width: 100%; box-sizing: border-box; } 
+            #level-announcer { font-size: 12vw; }
+        }
     </style>
 </head>
 <body>
     <svg width="0" height="0" style="position:absolute; z-index: -1;">
         <defs>
-            <radialGradient id="ballGloss" cx="30%" cy="30%" r="65%"><stop offset="0%" stop-color="#fff" stop-opacity="0.6"/><stop offset="100%" stop-color="#fff" stop-opacity="0.0"/></radialGradient>
-            <symbol id="ball-symbol" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="var(--ball-color, #ccc)" /><circle cx="50" cy="50" r="50" fill="url(#ballGloss)" /></symbol>
-            <symbol id="bomb-symbol" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="var(--ball-bomb-bg)" /><path d="M43.5,31.5 C43.5,28.4624339 46.0375661,26 49.0751323,26 L50.9248677,26 C53.9624339,26 56.5,28.4624339 56.5,31.5 L56.5,33.5 C59.5375661,33.5 62,35.9624339 62,39 L62,54 C62,59.5228475 57.5228475,64 52,64 L48,64 C42.4771525,64 38,59.5228475 38,54 L38,39 C38,35.9624339 40.4624339,33.5 43.5,33.5 L43.5,31.5 Z M70.3636364,29.7272727 C72.5454545,27.5454545 73.6363636,25.3636364 73.6363636,23.1818182 C73.6363636,21 72.5454545,18.8181818 70.3636364,16.6363636" stroke="var(--ball-bomb-icon)" stroke-width="5" fill="none" transform="translate(0, 5)"/><circle cx="50" cy="50" r="50" fill="url(#ballGloss)" /></symbol>
-            <symbol id="chameleon-symbol" viewBox="0 0 100 100"><defs><radialGradient id="g" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="hsl(0, 100%, 70%)" /><stop offset="25%" stop-color="hsl(90, 100%, 70%)" /><stop offset="50%" stop-color="hsl(180, 100%, 70%)" /><stop offset="75%" stop-color="hsl(270, 100%, 70%)" /><stop offset="100%" stop-color="hsl(0, 100%, 70%)" /></radialGradient></defs><circle cx="50" cy="50" r="50" fill="url(#g)" /><circle cx="50" cy="50" r="50" fill="url(#ballGloss)" /></symbol>
-            <symbol id="color-bomb-symbol" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="var(--ball-bomb-bg)" /><path d="M50 25 A 25 25 0 0 1 75 50 L 50 50 Z" fill="var(--ball-brick-red)"/><path d="M50 25 A 25 25 0 0 1 50 75 L 50 50 Z" fill="var(--ball-dark-blue)"/><path d="M50 75 A 25 25 0 0 1 25 50 L 50 50 Z" fill="var(--ball-green)"/><path d="M25 50 A 25 25 0 0 1 50 25 L 50 50 Z" fill="var(--ball-lemon-yellow)"/><circle cx="50" cy="50" r="50" fill="url(#ballGloss)" /></symbol>
-            <symbol id="stone-symbol" viewBox="0 0 100 100"><path d="M50 0 L100 28 L85 80 L15 80 L0 28 Z" fill="var(--ball-stone-bg)" stroke="var(--ball-stone-border)" stroke-width="5" /></symbol>
+            <radialGradient id="bGloss" cx="35%" cy="30%" r="60%"><stop offset="0%" stop-color="#fff" stop-opacity="0.9"/><stop offset="40%" stop-color="#fff" stop-opacity="0.2"/><stop offset="100%" stop-color="#fff" stop-opacity="0.0"/></radialGradient>
+            <radialGradient id="bShad" cx="50%" cy="50%" r="50%"><stop offset="60%" stop-color="#000" stop-opacity="0"/><stop offset="100%" stop-color="#000" stop-opacity="0.8"/></radialGradient>
+            
+            <symbol id="ball-symbol" viewBox="0 0 100 100"><circle cx="50" cy="50" r="48" fill="var(--ball-color, #ccc)" /><circle cx="50" cy="50" r="48" fill="url(#bShad)" /><circle cx="50" cy="50" r="48" fill="url(#bGloss)" /></symbol>
+            
+            <symbol id="bomb-symbol" viewBox="0 0 100 100"><circle cx="50" cy="50" r="48" fill="#111" /><circle cx="50" cy="50" r="48" fill="url(#bShad)" /><path d="M43.5,31.5 C43.5,28.5 46,26 49,26 L51,26 C54,26 56.5,28.5 56.5,31.5 L56.5,33.5 C59.5,33.5 62,36 62,39 L62,54 C62,59.5 57.5,64 52,64 L48,64 C42.5,64 38,59.5 38,54 L38,39 C38,36 40.5,33.5 43.5,33.5 L43.5,31.5 Z M70,29.7 C72.5,27.5 73.6,25.3 73.6,23 C73.6,21 72.5,18.8 70.3,16.6" stroke="#f43f5e" stroke-width="7" stroke-linecap="round" fill="none" transform="translate(0, 5)"/><circle cx="50" cy="50" r="48" fill="url(#bGloss)" /></symbol>
+            
+            <symbol id="crossbomb-symbol" viewBox="0 0 100 100"><circle cx="50" cy="50" r="48" fill="#000" /><circle cx="50" cy="50" r="48" fill="url(#bShad)" /><path d="M50 15 L60 45 L90 50 L60 55 L50 85 L40 55 L10 50 L40 45 Z" fill="#0ff" filter="drop-shadow(0 0 5px #0ff)"/><circle cx="50" cy="50" r="48" fill="url(#bGloss)" /></symbol>
+
+            <symbol id="chameleon-symbol" viewBox="0 0 100 100"><defs><conicGradient id="cg" cx="50%" cy="50%" angle="0deg"><stop offset="0%" stop-color="#f43f5e"/><stop offset="16%" stop-color="#f97316"/><stop offset="33%" stop-color="#facc15"/><stop offset="50%" stop-color="#10b981"/><stop offset="66%" stop-color="#3b82f6"/><stop offset="83%" stop-color="#a855f7"/><stop offset="100%" stop-color="#f43f5e"/></conicGradient></defs><circle cx="50" cy="50" r="48" fill="url(#cg)" /><circle cx="50" cy="50" r="48" fill="url(#bShad)" /><circle cx="50" cy="50" r="48" fill="url(#bGloss)" /></symbol>
+            
+            <symbol id="stone-symbol" viewBox="0 0 100 100"><path d="M45 5 L85 20 L95 65 L60 95 L15 85 L5 40 Z" fill="#222" stroke="#444" stroke-width="5" stroke-linejoin="round"/><path d="M25 35 L45 15 M70 80 L85 50" stroke="rgba(255,255,255,0.1)" stroke-width="8" stroke-linecap="round"/></symbol>
+
+            <symbol id="virus-symbol" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#166534" /><path d="M30 20 Q 50 10 70 20 Q 90 40 80 60 Q 70 90 50 80 Q 20 90 15 60 Q 5 40 30 20 Z" fill="#22c55e" opacity="0.6"/><circle cx="35" cy="35" r="8" fill="#bef264"/><circle cx="65" cy="45" r="5" fill="#bef264"/><circle cx="45" cy="65" r="10" fill="#bef264"/></symbol>
+
+            <symbol id="ice-overlay" viewBox="0 0 100 100"><path d="M10 20 L30 5 L80 15 L95 40 L85 80 L50 95 L15 85 L5 50 Z" fill="rgba(6, 182, 212, 0.4)" stroke="#67e8f9" stroke-width="4"/><path d="M20 20 L40 40 M80 30 L60 60 M30 80 L50 50" stroke="#cffafe" stroke-width="5" stroke-linecap="round" opacity="0.9"/></symbol>
+
+            <symbol id="timebomb-symbol" viewBox="0 0 100 100"><circle cx="50" cy="50" r="48" fill="#111" /><circle cx="50" cy="50" r="48" fill="url(#bShad)" /><circle cx="50" cy="50" r="48" fill="url(#bGloss)" /><circle cx="50" cy="50" r="45" stroke="#ef4444" stroke-width="4" stroke-dasharray="10 5" fill="none" animation="rotate 5s linear infinite" /></symbol>
         </defs>
     </svg>
 
     <header class="page-header">
-        <svg viewBox="0 0 500 150" xmlns="http://www.w3.org/2000/svg">
-            <style>
-                @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap');
-            </style>
-            <rect width="500" height="150" rx="20" fill="#1f2937" />
-            <g id="color-splash-banner">
-                <circle cx="100" cy="75" r="30" fill="#22c55e" opacity="0.7"/>
-                <circle cx="60" cy="110" r="12" fill="#22c55e"/>
-                <circle cx="450" cy="115" r="8" fill="#22c55e" opacity="0.9"/>
-                <circle cx="200" cy="60" r="28" fill="#a855f7" opacity="0.75"/>
-                <circle cx="400" cy="80" r="10" fill="#a855f7"/>
-                <circle cx="50" cy="55" r="9" fill="#a855f7" opacity="0.9"/>
-                <circle cx="420" cy="60" r="25" fill="#f97316" opacity="0.7"/>
-                <circle cx="150" cy="105" r="15" fill="#f97316"/>
-                <circle cx="80" cy="40" r="6" fill="#f97316" opacity="0.9"/>
-                <circle cx="70" cy="70" r="22" fill="#facc15" opacity="0.65"/>
-                <circle cx="460" cy="40" r="11" fill="#facc15"/>
-                <circle cx="300" cy="95" r="35" fill="#1d4ed8" opacity="0.7"/>
-                <circle cx="180" cy="45" r="8" fill="#1d4ed8"/>
-                <circle cx="370" cy="90" r="29" fill="#b91c1c" opacity="0.65"/>
-                <circle cx="110" cy="115" r="9" fill="#b91c1c"/>
-                 <circle cx="280" cy="50" r="10" fill="#854d0e" opacity="0.7"/>
-            </g>
-            <text x="50%" y="98" 
-                  font-family="'Fredoka One', cursive" 
-                  font-size="64" 
-                  fill="#FFFFFF" 
-                  text-anchor="middle" 
-                  stroke="#111827"
-                  stroke-width="2.5"
-                  paint-order="stroke"
-                  letter-spacing="1">
-                Színözön
-            </text>
+        <svg viewBox="0 0 500 100" xmlns="http://www.w3.org/2000/svg">
+            <text x="50%" y="75" font-family="'Fredoka One', cursive" font-size="75" fill="#FFFFFF" text-anchor="middle" stroke="#f43f5e" stroke-width="6" paint-order="stroke" letter-spacing="4">SZÍNÖZÖN</text>
         </svg>
     </header>
 
     <main class="game-layout">
-        <div id="game-board"></div>
+        <div id="game-board-container">
+            <div id="game-board"></div>
+            <div id="level-announcer">SZINT 1</div>
+        </div>
+        
         <div class="game-ui-panel">
-             <div class="ui-box"><h2>Pontszám</h2><span id="score" class="value">0</span></div>
-             <div class="ui-box"><h2>Rekord</h2><span id="high-score" class="value">0</span></div>
-             <div class="ui-box"><h2>Kombó</h2><span id="combo-counter" class="value">x0</span></div>
-             <div><h2>Következő</h2><div id="next-balls-preview"></div></div>
-             <div><button id="undo-button" class="ui-button"><svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" /></svg><span>Vissza (<span id="undo-count">3</span>)</span></button></div>
-             <div class="abilities-box">
-                <h2>Képesség Sáv</h2>
+             <div class="level-badge" id="ui-level-badge">Szint: 1</div>
+             
+             <div class="ui-box">
+                <div class="ui-box row" style="margin-bottom: 5px;">
+                    <h2>Cél Pontszám</h2>
+                    <span id="combo-counter" style="color: #facc15; font-weight: 900; font-size: 1.2em; text-shadow: 0 2px 5px #000;"></span>
+                </div>
+                <div class="goal-container">
+                    <div id="goal-bar-fill"></div>
+                    <div id="goal-text"><span id="score">0</span> &nbsp;/&nbsp; <span id="goal-score">1000</span></div>
+                </div>
+             </div>
+             
+             <div class="ui-box">
+                <h2>Érkezik (<span id="balls-per-turn-ui">3</span> db)</h2>
+                <div id="next-balls-preview"></div>
+             </div>
+             
+             <div class="ui-box">
+                <h2>Cunami Bomba</h2>
                 <div class="ability-bar-container"><div id="ability-bar-fill"></div></div>
-                <button id="color-bomb-button" class="ui-button" disabled>
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.141-6.445 5.5 5.5 0 0110.02 4.966l3.434 3.435a1 1 0 01-1.414 1.414l-3.434-3.435zM10 3a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 0110 3zM6.2 6.2a.75.75 0 010 1.061l-1.06 1.06a.75.75 0 01-1.06-1.06l1.06-1.06a.75.75 0 011.06 0zM3.75 10a.75.75 0 01.75-.75h1.5a.75.75 0 010 1.5h-1.5a.75.75 0 01-.75-.75zm2.5 3.55a.75.75 0 011.06 0l1.06 1.06a.75.75 0 11-1.06 1.06l-1.06-1.06a.75.75 0 010-1.06zM10 15.25a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5a.75.75 0 01.75-.75zm3.55-2.5a.75.75 0 010 1.06l-1.06 1.06a.75.75 0 11-1.06-1.06l1.06-1.06a.75.75 0 011.06 0z" clip-rule="evenodd" /></svg>
-                    <span>Színbomba (<span id="color-bomb-count">0</span>)</span>
+                <button id="color-bomb-button" class="ui-button primary" disabled style="margin-top: 10px;">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                    Aktiválás (<span id="color-bomb-count">0</span>)
                 </button>
+            </div>
+
+            <div>
+                <button id="undo-button" class="ui-button" style="margin-bottom: 10px;"><svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>Vissza (<span id="undo-count">3</span>)</button>
+                <button id="menu-button" class="ui-button">Főmenü</button>
             </div>
         </div>
     </main>
-    
-    <div class="rules-container">
-        <h2>Játékszabályzat</h2>
-        <h3>Cél a játékban</h3>
-        <p>A játék célja, hogy a lehető legmagasabb pontszámot érd el. Ezt úgy teheted meg, hogy azonos színű golyókat rendezel sorokba a játéktáblán, mielőtt az teljesen megtelne.</p>
-        <h3>Az Alapok: Hogyan Játssz?</h3>
-        <ol>
-            <li><strong>Alkoss Sorokat:</strong> Rendezz legalább <strong>5 azonos színű golyót</strong> egy vonalba. A vonal lehet vízszintes, függőleges vagy átlós.</li>
-            <li><strong>Mozgatás:</strong> Kattints egy golyóra a kijelöléséhez, majd egy üres mezőre a táblán, ahová mozgatni szeretnéd. <strong>Fontos:</strong> A golyó csak akkor tud elmozdulni, ha van szabad útvonal (üres mezőkön keresztül) a célmezőig.</li>
-            <li><strong>Új Golyók:</strong> Ha a lépéseddel <strong>nem</strong> sikerül sort kiraknod, 3 új golyó jelenik meg a táblán. Ha sikerül egy sort eltávolítanod, nem kapsz új golyókat abban a körben.</li>
-        </ol>
-        <h3>Pontozás és Kombók</h3>
-        <ul>
-            <li><strong>Alap Pontozás:</strong> Minden eltávolított golyó 10 pontot ér. Minél hosszabb a sor, annál több bónuszpontot kapsz.</li>
-            <li><strong>Kombó Számláló:</strong> Ha több körön keresztül megszakítás nélkül sikerül sorokat kiraknod, egyre növekvő <strong>pontszorzót (kombót)</strong> kapsz. Ha egy lépésed nem eredményez sort, a kombó megszakad.</li>
-        </ul>
-        <h3>Különleges Elemek a Táblán</h3>
-        <h4>Bomba</h4>
-        <p>Jelöld ki, majd mozdítsd egy üres mezőre. A célmezőre érve felrobban, és a körüli <strong>3x3-as területen minden elemet</strong> (golyót, sőt követ is!) eltávolít.</p>
-        <h4>Kaméleon Golyó (Joker)</h4>
-        <p>Ez a tarka golyó <strong>bármilyen színként</strong> funkcionálhat egy sor kiegészítéséhez.</p>
-        <h4>Kő Akadály</h4>
-        <p>Mozdíthatatlan elem. Csak úgy távolítható el, ha egy <strong>bomba</strong> robbanása éri, vagy ha <strong>közvetlenül mellette</strong> egy sort sikerül kiraknod.</p>
-        <h3>Képességek</h3>
-        <h4>Képesség Sáv és Színbomba</h4>
-        <p>Minden eltávolított golyó tölti a lila <strong>Képesség Sávot</strong>. Ha megtelik, jutalmul kapsz egy <strong>Színbombát</strong>. Aktiválás után kattints egy színre a pályán, és az összes olyan színű golyó megsemmisül.</p>
+
+    <!-- FŐMENÜ -->
+    <div id="main-menu-screen" class="overlay visible">
+        <div class="overlay-card">
+            <h1 class="overlay-title title-menu">SZÍNÖZÖN</h1>
+            <p style="color: var(--color-text-secondary); font-size: 1.2em; line-height: 1.6;">
+                Üdvözöl az <strong>1000 Pályás Kampány!</strong><br>Bármilyen formában összeérő 5 golyó felrobban! Készülj fel a terjedő Vírusra, az Időzített Bombákra és a gigantikus láncreakciókra.
+            </p>
+            <button id="btn-continue" class="ui-button primary" style="font-size: 1.5em; padding: 25px;">Folytatás (Szint: <span id="menu-current-level">1</span>)</button>
+            <button id="btn-new-game" class="ui-button" style="background: #222;">Új Kampány (Törlés)</button>
+            <button onclick="alert('SZABÁLYOK:\n- CLUSTER POP: Bármilyen formában (akár átlósan is) érintkezik 5 azonos golyó, felrobban!\n- VÍRUS: Zöld nyálka, ami minden körben megeszik egy üres mezőt. Robbants mellette egy alakzatot, hogy elpusztítsd!\n- IDŐZÍTETT BOMBA: Visszaszámlál! Ha eléri a 0-t, a környezete KŐVÉ válik. Építsd be egy alakzatba, hogy hatástalanítsd!\n- ARANY MEZŐ: A rajta történő robbanás x3 pontot ér!\n- MEGA POP: 8+ golyó együttes robbanása kereszt-lézert indít el!')" style="background:none; border:none; color:#aaa; text-decoration:underline; cursor:pointer; font-size:1em; margin-top:10px;">Hogyan kell játszani?</button>
+        </div>
     </div>
-    
-    <div id="game-over-screen" class="game-over-overlay">
-        <div class="game-over-box">Játék Vége</div>
-        <button id="restart-button" class="ui-button" style="width: auto; padding: 14px 35px;">Új Játék</button>
+
+    <!-- PÁLYA TELJESÍTVE -->
+    <div id="level-complete-screen" class="overlay">
+        <div class="overlay-card">
+            <h1 class="overlay-title title-win">ZSENIÁLIS!</h1>
+            <p style="font-size: 1.2em; color: var(--color-text-secondary);">Elérted a célpontszámot! Pakolj össze, megyünk tovább.</p>
+            <div style="font-size: 3em; font-weight: 900; margin: 10px 0;">Pont: <span id="win-score" style="color: var(--color-success)">0</span></div>
+            <button id="btn-next-level" class="ui-button primary" style="font-size: 1.4em; padding: 20px;">Következő Szint</button>
+        </div>
+    </div>
+
+    <!-- GAME OVER -->
+    <div id="game-over-screen" class="overlay">
+        <div class="overlay-card">
+            <h1 class="overlay-title title-lose">MEGTELT!</h1>
+            <p style="font-size: 1.2em; color: var(--color-text-secondary);">A tábla megtelt, vagy a vírus felfalta. A taktika elbukott.</p>
+            <div style="font-size: 1.5em; font-weight: bold; margin: 10px 0;">Hiányzott: <span id="lose-missing-score" style="color:#facc15;">0</span> pont.</div>
+            <button id="btn-retry-level" class="ui-button primary" style="font-size: 1.4em; padding: 20px;">Szint Újraindítása</button>
+            <button id="btn-menu-from-lose" class="ui-button">Főmenü</button>
+        </div>
     </div>
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
-        const config = {
-            GRID_SIZE: 14,
-            COLORS: ['green', 'purple', 'orange', 'lemon-yellow', 'dark-brown', 'dark-blue', 'brick-red'],
-            MIN_LINE_LENGTH: 5, BALLS_PER_TURN: 3, INITIAL_BALLS: 5, INITIAL_UNDOS: 3,
-            BOMB_CHANCE: 0.07, CHAMELEON_CHANCE: 0.05, STONE_CHANCE: 0.04,
-            ABILITY_CHARGE_PER_BALL: 3.5, ABILITY_CHARGE_GOAL: 100
-        };
-
+        const CSS_COLORS = { 'green':'#10b981', 'purple':'#a855f7', 'orange':'#f97316', 'yellow':'#facc15', 'magenta':'#ec4899', 'blue':'#3b82f6', 'red':'#ef4444', 'cyan':'#06b6d4' };
+        const ALL_COLORS = Object.keys(CSS_COLORS);
+        
         let state = {
-            board: [], score: 0, highScore: localStorage.getItem('colorLinesHighScore_v8') || 0,
-            selectedItem: null, nextItems: [], undoState: null, undoCount: config.INITIAL_UNDOS,
-            isAnimating: false,
-            comboCounter: 0, abilityCharge: 0, activeAbility: null,
-            earnedAbilities: { colorBomb: 0 }
+            currentLevel: parseInt(localStorage.getItem('szinFormaLevel')) || 1,
+            score: 0, board:[], selectedItem: null, nextItems:[], undoState: null,
+            isAnimating: false, comboCounter: 0, abilityCharge: 0, activeAbility: null,
+            earnedAbilities: { colorBomb: parseInt(localStorage.getItem('szinFormaBombs')) || 0 },
+            config: {}, virusDestroyedThisTurn: false
         };
 
-        const DOMElements = {
-            board: document.getElementById('game-board'), score: document.getElementById('score'),
-            highScore: document.getElementById('high-score'), nextBalls: document.getElementById('next-balls-preview'),
+        const DOM = {
+            board: document.getElementById('game-board'), boardContainer: document.getElementById('game-board-container'),
+            score: document.getElementById('score'), goalScore: document.getElementById('goal-score'),
+            goalBarFill: document.getElementById('goal-bar-fill'),
+            nextBalls: document.getElementById('next-balls-preview'), ballsPerTurnUI: document.getElementById('balls-per-turn-ui'),
             undoButton: document.getElementById('undo-button'), undoCount: document.getElementById('undo-count'),
-            gameOverScreen: document.getElementById('game-over-screen'), restartButton: document.getElementById('restart-button'),
-            pathOverlay: null,
             comboCounter: document.getElementById('combo-counter'),
             abilityBarFill: document.getElementById('ability-bar-fill'),
-            colorBombButton: document.getElementById('color-bomb-button'),
-            colorBombCount: document.getElementById('color-bomb-count'),
+            colorBombButton: document.getElementById('color-bomb-button'), colorBombCount: document.getElementById('color-bomb-count'),
+            levelBadge: document.getElementById('ui-level-badge'), levelAnnouncer: document.getElementById('level-announcer'),
+            pathOverlay: null, mainMenu: document.getElementById('main-menu-screen'), levelComplete: document.getElementById('level-complete-screen'), gameOver: document.getElementById('game-over-screen'),
+            btnContinue: document.getElementById('btn-continue'), btnNewGame: document.getElementById('btn-new-game'),
+            btnNextLevel: document.getElementById('btn-next-level'), btnRetryLevel: document.getElementById('btn-retry-level'),
+            btnMenu: document.getElementById('menu-button'), btnMenuFromLose: document.getElementById('btn-menu-from-lose'),
+            menuCurrentLevel: document.getElementById('menu-current-level')
         };
 
-        function initGame() {
-            Object.assign(state, {
-                score: 0, undoCount: config.INITIAL_UNDOS, isAnimating: false, selectedItem: null,
-                undoState: null, comboCounter: 0, abilityCharge: 0, activeAbility: null,
-                earnedAbilities: { colorBomb: 0 }
-            });
-            DOMElements.board.textContent = '';
-            document.body.appendChild(DOMElements.gameOverScreen);
-            DOMElements.gameOverScreen.classList.remove('visible');
-            const svgOverlay = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-            svgOverlay.id = 'path-overlay'; DOMElements.board.appendChild(svgOverlay); DOMElements.pathOverlay = svgOverlay;
+        // --- 1000 SZINT ALGORITMUS ---
+        function generateLevelConfig(level) {
+            let isBoss = (level % 10 === 0);
+            let isMegaBoss = (level % 50 === 0);
+            
+            // Oszcilláló táblaméret: 8-tól 14-ig ugrál fel-le
+            let cycle = level % 14;
+            let gridSize = 8 + (cycle <= 6 ? cycle : 12 - cycle); 
+            if (isBoss) gridSize = 14;
 
-            for (let r = 0; r < config.GRID_SIZE; r++) {
-                for (let c = 0; c < config.GRID_SIZE; c++) {
-                    const cell = document.createElement('div');
-                    cell.className = 'cell'; cell.dataset.r = r; cell.dataset.c = c;
-                    cell.addEventListener('click', () => onCellClick(r, c));
-                    cell.addEventListener('mouseover', () => onCellHover(r, c));
-                    cell.addEventListener('mouseout', clearPreviews);
-                    DOMElements.board.appendChild(cell);
+            let numColors = Math.min(8, 4 + Math.floor(level / 30));
+            
+            // Célpontszám: masszív exponenciális
+            let goalScore = (level * 600) + Math.floor(Math.pow(level, 1.6) * 50);
+            if (isBoss) goalScore = Math.floor(goalScore * 1.5);
+            
+            let ballsPerTurn = (level > 150) ? 4 : 3;
+            if (isMegaBoss) ballsPerTurn = 5;
+
+            // Mechanika esélyek
+            let virusChance = level > 15 ? Math.min(0.04, 0.01 + (level * 0.0001)) : 0;
+            let timeBombChance = level > 30 ? Math.min(0.06, 0.02 + (level * 0.0001)) : 0;
+            let goldCellCount = level > 5 ? 1 + Math.floor(Math.random() * 4) : 0;
+            
+            let bombChance = Math.min(0.08, 0.04 + (level * 0.0002));
+            let chameleonChance = Math.min(0.06, 0.03 + (level * 0.0002));
+            let crossBombChance = level >= 20 ? Math.min(0.05, 0.01 + (level * 0.0002)) : 0;
+
+            return {
+                LEVEL: level, IS_BOSS: isBoss, IS_MEGA: isMegaBoss, GRID_SIZE: gridSize, COLORS: ALL_COLORS.slice(0, numColors),
+                MIN_CLUSTER: 5, BALLS_PER_TURN: ballsPerTurn, INITIAL_BALLS: 5 + Math.floor(gridSize/2),
+                INITIAL_STONES: isBoss ? 5 : Math.floor(Math.random() * 3), 
+                INITIAL_VIRUS: (level > 20 && Math.random() > 0.5) ? 1 : 0,
+                GOLD_CELLS_COUNT: goldCellCount, UNDO_LIMIT: 3, GOAL_SCORE: Math.ceil(goalScore / 100) * 100, 
+                BOMB_CHANCE: bombChance, CROSSBOMB_CHANCE: crossBombChance, CHAMELEON_CHANCE: chameleonChance,
+                VIRUS_CHANCE: virusChance, TIMEBOMB_CHANCE: timeBombChance,
+                ABILITY_CHARGE_PER_BALL: 6, ABILITY_CHARGE_GOAL: 200
+            };
+        }
+
+        function openMenu() {
+            DOM.mainMenu.classList.add('visible'); DOM.levelComplete.classList.remove('visible'); DOM.gameOver.classList.remove('visible');
+            DOM.menuCurrentLevel.textContent = state.currentLevel; document.body.classList.remove('ability-active');
+        }
+
+        function startLevel(levelNum) {
+            state.currentLevel = levelNum; state.config = generateLevelConfig(levelNum);
+            state.score = 0; state.undoCount = state.config.UNDO_LIMIT; state.isAnimating = false;
+            state.selectedItem = null; state.undoState = null; state.comboCounter = 0; state.abilityCharge = 0; state.activeAbility = null;
+            
+            localStorage.setItem('szinFormaLevel', state.currentLevel); document.body.classList.remove('ability-active');
+            document.documentElement.style.setProperty('--grid-size', state.config.GRID_SIZE);
+            
+            generateGoldCells();
+            buildBoardDOM();
+            
+            DOM.mainMenu.classList.remove('visible'); DOM.levelComplete.classList.remove('visible'); DOM.gameOver.classList.remove('visible');
+            
+            let badgeText = state.config.IS_MEGA ? 'MEGA BOSS' : (state.config.IS_BOSS ? 'BOSS SZINT' : `Szint: ${state.currentLevel}`);
+            DOM.levelBadge.className = `level-badge ${state.config.IS_BOSS ? 'boss-badge' : ''}`;
+            DOM.levelBadge.textContent = badgeText;
+            
+            DOM.levelAnnouncer.innerHTML = state.config.IS_MEGA ? `<span style="color:#0ff; font-size:1.5em;">MEGA BOSS</span><br>${state.currentLevel}` : (state.config.IS_BOSS ? `<span style="color:#ef4444">BOSS SZINT</span><br>${state.currentLevel}` : `SZINT ${state.currentLevel}`);
+            DOM.levelAnnouncer.classList.add('show'); setTimeout(() => DOM.levelAnnouncer.classList.remove('show'), 2000);
+
+            state.board = Array(state.config.GRID_SIZE).fill(null).map(() => Array(state.config.GRID_SIZE).fill(null));
+            generateNextItems(); updateUI();
+            
+            placeInitialObstacles(); addRandomItems(state.config.INITIAL_BALLS, false);
+        }
+
+        function generateGoldCells() {
+            state.goldCells = new Set();
+            while(state.goldCells.size < state.config.GOLD_CELLS_COUNT) {
+                state.goldCells.add(`${Math.floor(Math.random()*state.config.GRID_SIZE)}-${Math.floor(Math.random()*state.config.GRID_SIZE)}`);
+            }
+        }
+
+        function buildBoardDOM() {
+            DOM.board.innerHTML = '';
+            const svgOverlay = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svgOverlay.id = 'path-overlay'; DOM.board.appendChild(svgOverlay); DOM.pathOverlay = svgOverlay;
+            for (let r = 0; r < state.config.GRID_SIZE; r++) {
+                for (let c = 0; c < state.config.GRID_SIZE; c++) {
+                    const cell = document.createElement('div'); cell.className = 'cell'; cell.dataset.r = r; cell.dataset.c = c;
+                    if (state.goldCells.has(`${r}-${c}`)) cell.classList.add('gold-cell');
+                    cell.addEventListener('click', () => onCellClick(r, c)); cell.addEventListener('mouseover', () => onCellHover(r, c)); cell.addEventListener('mouseout', clearPreviews);
+                    DOM.board.appendChild(cell);
                 }
             }
-            state.board = Array(config.GRID_SIZE).fill(null).map(() => Array(config.GRID_SIZE).fill(null));
-            generateNextItems(); updateUI();
-            addRandomItems(config.INITIAL_BALLS, false);
         }
 
         function createItemSVG(item, isGhost = false) {
-            const itemWrapper = document.createElement('div');
-            itemWrapper.className = `ball ${isGhost ? 'ghost' : ''}`;
-            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-            const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+            const wrapper = document.createElement('div'); wrapper.className = `ball ${isGhost ? 'ghost' : ''}`;
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
             svg.setAttribute('viewBox', '0 0 100 100');
             
-            const symbolMap = {
-                bomb: '#bomb-symbol', chameleon: '#chameleon-symbol', stone: '#stone-symbol',
-                colorBomb: '#color-bomb-symbol', ball: '#ball-symbol'
-            };
-            use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', symbolMap[item.type]);
-
-            if (item.type === 'ball') svg.style.setProperty('--ball-color', `var(--ball-${item.color})`);
-            if (item.type === 'stone') itemWrapper.classList.add('stone');
-
-            svg.appendChild(use); itemWrapper.appendChild(svg); return itemWrapper;
+            let smap = { bomb: '#bomb-symbol', crossbomb: '#crossbomb-symbol', chameleon: '#chameleon-symbol', stone: '#stone-symbol', virus: '#virus-symbol', ball: '#ball-symbol' };
+            if (item.type === 'timebomb') {
+                use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', '#timebomb-symbol');
+                svg.appendChild(use);
+                const txt = document.createElement('div'); txt.className = 'timer-text'; txt.textContent = item.timer; wrapper.appendChild(txt);
+            } else {
+                use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', smap[item.type]);
+                svg.appendChild(use);
+            }
+            if (item.type === 'ball' || item.type === 'timebomb') svg.style.setProperty('--ball-color', `var(--ball-${item.color})`);
+            if (item.type === 'stone') wrapper.classList.add('stone');
+            if (item.type === 'virus') wrapper.classList.add('virus');
+            if (item.isIced) {
+                wrapper.classList.add('iced');
+                const iceUse = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+                iceUse.setAttributeNS('http://www.w3.org/1999/xlink', 'href', '#ice-overlay');
+                svg.appendChild(iceUse);
+            }
+            wrapper.appendChild(svg); return wrapper;
         }
 
+        function placeItemOnBoard(r, c, item, spawnAnim = false) { 
+            const itemEl = createItemSVG(item); if (spawnAnim) itemEl.classList.add('spawning'); 
+            const cell = getCell(r, c); if(cell) cell.appendChild(itemEl); 
+        }
+
+        // --- INTERAKCIÓ ÉS LOGIKA ---
         function onCellClick(r, c) {
             if (state.isAnimating) return;
+            const clickedItem = state.board[r][c];
             
-            if (state.activeAbility) {
-                handleAbilityUse(r, c);
+            if (state.activeAbility === 'colorBomb') {
+                if (clickedItem && (clickedItem.type === 'ball' || clickedItem.type === 'timebomb')) {
+                    executeColorBomb(clickedItem.color);
+                } else { state.activeAbility = null; document.body.classList.remove('ability-active'); updateUI(); }
                 return;
             }
 
-            const clickedItem = state.board[r][c];
-            const selectedEl = document.querySelector('.selected');
-            clearPreviews();
+            const selectedEl = document.querySelector('.selected'); clearPreviews();
 
-            if (clickedItem && clickedItem.type !== 'stone') {
+            // Nem mozgathatóak: Kő, Vírus, Jég
+            if (clickedItem && !['stone', 'virus'].includes(clickedItem.type) && !clickedItem.isIced) {
                 if (state.selectedItem && state.selectedItem.r === r && state.selectedItem.c === c) {
                     state.selectedItem = null; selectedEl.classList.remove('selected'); return;
                 }
                 if (selectedEl) selectedEl.classList.remove('selected');
                 state.selectedItem = { r, c, type: clickedItem.type, color: clickedItem.color };
                 getCell(r, c).querySelector('.ball').classList.add('selected');
-            } else if (state.selectedItem) {
+            } else if (state.selectedItem && !clickedItem) {
                 const path = findPath(state.selectedItem.r, state.selectedItem.c, r, c);
                 if (path) {
-                    const itemType = state.selectedItem.type;
-                    if (itemType === 'bomb') moveAndExplodeBomb(state.selectedItem, { r, c }, path);
-                    else moveBall(state.selectedItem, { r, c }, path);
+                    const type = state.selectedItem.type;
+                    if (type === 'bomb') moveAndExplode(state.selectedItem, {r,c}, path, 'normal');
+                    else if (type === 'crossbomb') moveAndExplode(state.selectedItem, {r,c}, path, 'cross');
+                    else moveBall(state.selectedItem, {r,c}, path);
                 } else if (selectedEl) {
-                    selectedEl.classList.add('shake');
-                    setTimeout(() => selectedEl.classList.remove('shake'), 500);
+                    selectedEl.style.animation = 'none'; void selectedEl.offsetWidth; selectedEl.style.animation = 'select-bounce 0.5s infinite alternate';
                 }
             }
         }
         
-        async function runGameTurn(linesRemoved) {
-            if (!linesRemoved) {
-                state.comboCounter = 0;
-                await addRandomItems(config.BALLS_PER_TURN);
+        async function runGameTurn(clustersRemoved) {
+            if (!clustersRemoved) { 
+                state.comboCounter = 0; 
+                await processTimeBombsAndVirus(); // Ha nem robbantottunk, a büntetések élesednek!
+                await addRandomItems(state.config.BALLS_PER_TURN); 
+            } else {
+                // Ha robbantottunk, megnézzük, lett-e új cluster ami beesett (Cascade)
+                const extraRemoved = await checkForClustersAndRemove();
+                if(!extraRemoved && !state.virusDestroyedThisTurn) {
+                    await spreadVirus(); // Ha nem öltünk vírust, terjed!
+                }
             }
-            if (state.score > state.highScore) {
-                state.highScore = state.score;
-                localStorage.setItem('colorLinesHighScore_v8', state.highScore);
+            updateUI(); state.isAnimating = false; checkWinLoss();
+        }
+
+        async function processTimeBombsAndVirus() {
+            let bombExploded = false;
+            for(let r=0; r<state.config.GRID_SIZE; r++) {
+                for(let c=0; c<state.config.GRID_SIZE; c++) {
+                    const item = state.board[r][c];
+                    if (item && item.type === 'timebomb') {
+                        item.timer--;
+                        if (item.timer <= 0) {
+                            bombExploded = true;
+                            // Kővé válik és 4 szomszédja is!
+                            state.board[r][c] = {type: 'stone'}; placeItemOnBoard(r, c, state.board[r][c], true);[{r:r-1,c},{r:r+1,c},{r,c:c-1},{r,c:c+1}].forEach(n => {
+                                if(n.r>=0 && n.r<state.config.GRID_SIZE && n.c>=0 && n.c<state.config.GRID_SIZE) {
+                                    if(state.board[n.r][n.c]) getCell(n.r, n.c).querySelector('.ball')?.remove();
+                                    state.board[n.r][n.c] = {type: 'stone'}; placeItemOnBoard(n.r, n.c, state.board[n.r][n.c], true);
+                                }
+                            });
+                            triggerEpicExplosion(r, c, '#ef4444');
+                        } else {
+                            // Update timer UI
+                            const txt = getCell(r, c).querySelector('.timer-text');
+                            if(txt) txt.textContent = item.timer;
+                        }
+                    }
+                }
             }
-            updateUI();
-            state.isAnimating = false;
+            if(bombExploded) screenShakeHard();
+            
+            if(!state.virusDestroyedThisTurn) await spreadVirus();
+        }
+
+        async function spreadVirus() {
+            const viruses =[];
+            for(let r=0; r<state.config.GRID_SIZE; r++) for(let c=0; c<state.config.GRID_SIZE; c++) if(state.board[r][c]?.type === 'virus') viruses.push({r,c});
+            if(viruses.length === 0) return;
+            
+            // Véletlen vírus választása, ami üres helyre tud nőni (8-irány)
+            viruses.sort(() => Math.random() - 0.5);
+            const dirs =[{r:-1,c:-1},{r:-1,c:0},{r:-1,c:1},{r:0,c:-1},{r:0,c:1},{r:1,c:-1},{r:1,c:0},{r:1,c:1}];
+            for(let v of viruses) {
+                let empties =[];
+                for(let d of dirs) {
+                    let nr = v.r+d.r, nc = v.c+d.c;
+                    if(nr>=0 && nr<state.config.GRID_SIZE && nc>=0 && nc<state.config.GRID_SIZE && !state.board[nr][nc]) empties.push({r:nr, c:nc});
+                }
+                if(empties.length > 0) {
+                    const target = empties[Math.floor(Math.random() * empties.length)];
+                    state.board[target.r][target.c] = {type: 'virus'};
+                    placeItemOnBoard(target.r, target.c, state.board[target.r][target.c], true);
+                    break; // Csak egy terjed körönként
+                }
+            }
+        }
+
+        function checkWinLoss() {
+            if (state.score >= state.config.GOAL_SCORE) {
+                state.isAnimating = true;
+                setTimeout(() => { document.getElementById('win-score').textContent = state.score; DOM.levelComplete.classList.add('visible'); localStorage.setItem('szinFormaBombs', state.earnedAbilities.colorBomb); }, 800);
+                return;
+            }
+            let empty = 0; for(let r=0;r<state.config.GRID_SIZE;r++) for(let c=0;c<state.config.GRID_SIZE;c++) if(!state.board[r][c]) empty++;
+            if (empty === 0) {
+                state.isAnimating = true;
+                setTimeout(() => { document.getElementById('lose-missing-score').textContent = state.config.GOAL_SCORE - state.score; DOM.gameOver.classList.add('visible'); }, 800);
+            }
         }
 
         async function moveBall(fromPos, toPos, path) {
             saveUndoState(); state.isAnimating = true;
-            const ballEl = getCell(fromPos.r, fromPos.c).querySelector('.ball');
-            ballEl.classList.remove('selected');
-
-            const animation = ballEl.animate(
-                path.map(p => ({ transform: `translate(${(p.c - fromPos.c) * ballEl.parentElement.offsetWidth}px, ${(p.r - fromPos.r) * ballEl.parentElement.offsetWidth}px)` })),
-                { duration: path.length * 60 + 100, easing: 'cubic-bezier(0.65, 0, 0.35, 1)' }
-            );
-            await animation.finished;
-
+            const ballEl = getCell(fromPos.r, fromPos.c).querySelector('.ball'); ballEl.classList.remove('selected');
+            const anim = ballEl.animate(path.map(p => ({ transform: `translate(${(p.c - fromPos.c) * ballEl.parentElement.offsetWidth}px, ${(p.r - fromPos.r) * ballEl.parentElement.offsetWidth}px)` })), { duration: path.length * 35 + 80, easing: 'ease-in-out' });
+            await anim.finished;
             getCell(toPos.r, toPos.c).appendChild(ballEl);
-            state.board[toPos.r][toPos.c] = { type: fromPos.type, color: fromPos.color };
-            state.board[fromPos.r][fromPos.c] = null; state.selectedItem = null;
-
-            const linesRemoved = await checkForLinesAndRemove();
-            runGameTurn(linesRemoved);
-        }
-        
-        async function moveAndExplodeBomb(fromPos, toPos, path) {
-            saveUndoState(); state.isAnimating = true;
-            const bombEl = getCell(fromPos.r, fromPos.c).querySelector('.ball');
-            bombEl.classList.remove('selected');
-
-            const animation = bombEl.animate(
-                path.map(p => ({ transform: `translate(${(p.c - fromPos.c) * bombEl.parentElement.offsetWidth}px, ${(p.r - fromPos.r) * bombEl.parentElement.offsetWidth}px)` })),
-                { duration: path.length * 60 + 100, easing: 'cubic-bezier(0.65, 0, 0.35, 1)' }
-            );
-            await animation.finished;
+            state.board[toPos.r][toPos.c] = state.board[fromPos.r][fromPos.c]; state.board[fromPos.r][fromPos.c] = null; state.selectedItem = null;
             
-            state.board[fromPos.r][fromPos.c] = null; bombEl.remove(); state.selectedItem = null;
+            const removed = await checkForClustersAndRemove(); runGameTurn(removed);
+        }
 
+        // --- EFFEKTEK ---
+        function screenShakeHard() { DOM.boardContainer.classList.remove('shake-hard'); void DOM.boardContainer.offsetWidth; DOM.boardContainer.classList.add('shake-hard'); }
+        function screenShakeMega() { DOM.boardContainer.classList.remove('shake-mega'); void DOM.boardContainer.offsetWidth; DOM.boardContainer.classList.add('shake-mega'); }
+        
+        function triggerEpicExplosion(r, c, colorHex) {
+            const cell = getCell(r, c); if (!cell) return;
+            const exp = document.createElement('div'); exp.className = 'epic-explosion'; exp.style.setProperty('--exp-color', colorHex);
+            const shock = document.createElement('div'); shock.className = 'shockwave'; shock.style.setProperty('--exp-color', colorHex);
+            cell.appendChild(exp); cell.appendChild(shock); setTimeout(() => { exp.remove(); shock.remove(); }, 600);
+        }
+        function shootLasers(r, c, colorHex) {
+            const cell = getCell(r, c);
+            const lh = document.createElement('div'); lh.className = 'laser-beam'; lh.style.setProperty('--exp-color', colorHex);
+            lh.style.top = '50%'; lh.style.left = '-1000%'; lh.style.width = '2000%'; lh.style.height = '15px'; lh.style.transform = 'translateY(-50%)';
+            const lv = document.createElement('div'); lv.className = 'laser-beam'; lv.style.setProperty('--exp-color', colorHex);
+            lv.style.left = '50%'; lv.style.top = '-1000%'; lv.style.height = '2000%'; lv.style.width = '15px'; lv.style.transform = 'translateX(-50%)';
+            cell.appendChild(lh); cell.appendChild(lv); setTimeout(() => { lh.remove(); lv.remove(); }, 400);
+            
+            // Törlés a kereszten
             const toRemove = new Set();
-            for (let dr = -1; dr <= 1; dr++) {
-                for (let dc = -1; dc <= 1; dc++) {
-                    const r = toPos.r + dr, c = toPos.c + dc;
-                    if (r >= 0 && r < config.GRID_SIZE && c >= 0 && c < config.GRID_SIZE && state.board[r][c]) {
-                        toRemove.add(`${r}-${c}`);
-                    }
+            for(let i=0; i<state.config.GRID_SIZE; i++) {
+                if(state.board[r][i] && !['stone','virus'].includes(state.board[r][i].type)) toRemove.add(`${r}-${i}`);
+                if(state.board[i][c] && !['stone','virus'].includes(state.board[i][c].type)) toRemove.add(`${i}-${c}`);
+            }
+            return toRemove;
+        }
+
+        async function executeColorBomb(targetColor) {
+            state.isAnimating = true; state.activeAbility = null; document.body.classList.remove('ability-active');
+            state.earnedAbilities.colorBomb--; localStorage.setItem('szinFormaBombs', state.earnedAbilities.colorBomb); updateUI();
+            
+            const toRemove = new Set();
+            for (let r = 0; r < state.config.GRID_SIZE; r++) {
+                for (let c = 0; c < state.config.GRID_SIZE; c++) {
+                    const item = state.board[r][c];
+                    if (item && item.color === targetColor) toRemove.add(`${r}-${c}`);
                 }
             }
-            if (toRemove.size > 0) removeItems(toRemove, toRemove.size * 10, `${toPos.r}-${toPos.c}`);
-            
-            const explosion = document.createElement('div');
-            explosion.className = 'explosion-effect';
-            getCell(toPos.r, toPos.c).appendChild(explosion);
-            setTimeout(() => explosion.remove(), 400);
-
-            await new Promise(resolve => setTimeout(resolve, 400));
+            screenShakeMega(); await removeItems(toRemove, toRemove.size * 50, true);
             generateNextItems(); runGameTurn(true);
         }
 
-        async function checkForLinesAndRemove() {
-            const toRemove = new Set();
-            const directions = [{r:0,c:1},{r:1,c:0},{r:1,c:1},{r:1,c:-1}];
-            for (let r = 0; r < config.GRID_SIZE; r++) {
-                for (let c = 0; c < config.GRID_SIZE; c++) {
+        async function moveAndExplode(fromPos, toPos, path, type) {
+            saveUndoState(); state.isAnimating = true;
+            const bombEl = getCell(fromPos.r, fromPos.c).querySelector('.ball'); bombEl.classList.remove('selected');
+            const anim = bombEl.animate(path.map(p => ({ transform: `translate(${(p.c - fromPos.c) * bombEl.parentElement.offsetWidth}px, ${(p.r - fromPos.r) * bombEl.parentElement.offsetWidth}px)` })), { duration: path.length * 35 + 80, easing: 'ease-in-out' });
+            await anim.finished;
+            state.board[fromPos.r][fromPos.c] = null; bombEl.remove(); state.selectedItem = null;
+            
+            let toRemove = new Set();
+            if (type === 'normal') {
+                for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+                    const r = toPos.r + dr, c = toPos.c + dc;
+                    if (r >= 0 && r < state.config.GRID_SIZE && c >= 0 && c < state.config.GRID_SIZE && state.board[r][c]) toRemove.add(`${r}-${c}`);
+                }
+                screenShakeHard(); triggerEpicExplosion(toPos.r, toPos.c, '#f43f5e');
+            } else if (type === 'cross') {
+                toRemove = shootLasers(toPos.r, toPos.c, '#0ff');
+                screenShakeMega(); triggerEpicExplosion(toPos.r, toPos.c, '#0ff');
+            }
+            
+            if (toRemove.size > 0) await removeItems(toRemove, toRemove.size * 30, false);
+            await new Promise(res => setTimeout(res, 200)); generateNextItems(); runGameTurn(true);
+        }
+
+        // --- 8-IRÁNYÚ CLUSTER (ALAKZAT) KERESÉS ÉS TÖRLÉS ---
+        async function checkForClustersAndRemove() {
+            state.virusDestroyedThisTurn = false;
+            let globalVisited = new Set();
+            let allToRemove = new Set();
+            let totalScore = 0;
+            let megaPopTriggered = false;
+            let megaPopCenter = null;
+
+            const dirs =[{r:-1,c:-1},{r:-1,c:0},{r:-1,c:1},{r:0,c:-1},{r:0,c:1},{r:1,c:-1},{r:1,c:0},{r:1,c:1}];
+
+            for (let r = 0; r < state.config.GRID_SIZE; r++) {
+                for (let c = 0; c < state.config.GRID_SIZE; c++) {
+                    const key = `${r}-${c}`;
+                    if (globalVisited.has(key)) continue;
+                    
                     const item = state.board[r][c];
-                    if (!item || item.type !== 'ball') continue;
-                    for (const dir of directions) {
-                        const line = [{r,c}];
-                        for (let i = 1; i < config.GRID_SIZE; i++) {
-                            const cr = r + i * dir.r, cc = c + i * dir.c;
-                            if (cr<0||cr>=config.GRID_SIZE||cc<0||cc>=config.GRID_SIZE) break;
-                            const nextItem = state.board[cr][cc];
-                            if (nextItem?.type === 'chameleon') { line.push({r:cr,c:cc}); continue; }
-                            if (nextItem?.type === 'ball' && nextItem.color === item.color) { line.push({r:cr, c:cc}); continue; }
-                            break;
+                    // Csak fix színekből indulunk (kaméleonból nem kezdünk clustert, mert ő felveszi másét)
+                    if (!item || !['ball', 'timebomb'].includes(item.type)) continue;
+
+                    let clusterColor = item.color;
+                    let clusterKeys = new Set();
+                    let queue = [{r,c}];
+
+                    // BFS (8 irány)
+                    while(queue.length > 0) {
+                        const curr = queue.shift();
+                        const cKey = `${curr.r}-${curr.c}`;
+                        if (clusterKeys.has(cKey)) continue;
+                        
+                        clusterKeys.add(cKey);
+                        globalVisited.add(cKey);
+
+                        for(let d of dirs) {
+                            let nr = curr.r + d.r, nc = curr.c + d.c;
+                            if (nr>=0 && nr<state.config.GRID_SIZE && nc>=0 && nc<state.config.GRID_SIZE) {
+                                let nKey = `${nr}-${nc}`;
+                                let nItem = state.board[nr][nc];
+                                if (nItem && !clusterKeys.has(nKey)) {
+                                    if ((['ball','timebomb'].includes(nItem.type) && nItem.color === clusterColor) || nItem.type === 'chameleon') {
+                                        queue.push({r:nr, c:nc});
+                                    }
+                                }
+                            }
                         }
-                        if (line.length >= config.MIN_LINE_LENGTH) line.forEach(p => toRemove.add(`${p.r}-${p.c}`));
+                    }
+
+                    // Ha az alakzat elég nagy
+                    if (clusterKeys.size >= state.config.MIN_CLUSTER) {
+                        let multiplier = 1;
+                        let clusterScore = (clusterKeys.size * 20) + Math.pow(clusterKeys.size - state.config.MIN_CLUSTER, 2) * 80;
+                        
+                        clusterKeys.forEach(k => {
+                            allToRemove.add(k);
+                            if (state.goldCells.has(k)) multiplier = 3; // ARANY MEZŐ BÓNUSZ!
+                        });
+                        
+                        clusterScore *= multiplier;
+                        
+                        // MEGA POP ellenőrzés
+                        if (clusterKeys.size >= 8) {
+                            megaPopTriggered = true;
+                            megaPopCenter = {r:r, c:c}; // Kezdőpont durran legnagyobbat
+                            clusterScore += 500;
+                        }
+
+                        // Szomszédos akadályok vizsgálata (Kő, Vírus) minden cluster tagnál
+                        clusterKeys.forEach(k => {
+                            const [cr, cc] = k.split('-').map(Number);
+                            dirs.forEach(d => {
+                                let nr = cr+d.r, nc = cc+d.c;
+                                if(nr>=0 && nr<state.config.GRID_SIZE && nc>=0 && nc<state.config.GRID_SIZE) {
+                                    const adjItem = state.board[nr][nc];
+                                    if(adjItem) {
+                                        if (adjItem.type === 'stone') { allToRemove.add(`${nr}-${nc}`); clusterScore+=50; }
+                                        if (adjItem.type === 'virus') { allToRemove.add(`${nr}-${nc}`); clusterScore+=100; state.virusDestroyedThisTurn = true; }
+                                    }
+                                }
+                            });
+                        });
+                        totalScore += clusterScore;
                     }
                 }
             }
-            if (toRemove.size > 0) {
+
+            if (allToRemove.size > 0) {
                 state.comboCounter++;
-                const comboBonus = (state.comboCounter > 1) ? Math.pow(state.comboCounter, 2) * 10 : 0;
-                let scoreToAdd = (toRemove.size * 10) + Math.pow(Math.max(0, toRemove.size - config.MIN_LINE_LENGTH), 2) * 20 + comboBonus;
-                await removeItems(toRemove, scoreToAdd);
-                
-                state.abilityCharge += toRemove.size * config.ABILITY_CHARGE_PER_BALL;
-                if(state.abilityCharge >= config.ABILITY_CHARGE_GOAL) {
-                    state.earnedAbilities.colorBomb++;
-                    state.abilityCharge -= config.ABILITY_CHARGE_GOAL;
+                let comboMult = 1 + (state.comboCounter * 0.5);
+                totalScore = Math.floor(totalScore * comboMult);
+
+                if (megaPopTriggered && megaPopCenter) {
+                    screenShakeMega();
+                    showFloatingText("MEGA ROBBANÁS!", megaPopCenter.r, megaPopCenter.c, 'mega-text');
+                    const megaRemoves = shootLasers(megaPopCenter.r, megaPopCenter.c, CSS_COLORS[state.board[megaPopCenter.r][megaPopCenter.c].color] || '#0ff');
+                    megaRemoves.forEach(k => allToRemove.add(k));
+                } else {
+                    screenShakeHard();
                 }
+
+                await removeItems(allToRemove, totalScore, true);
+                
+                state.abilityCharge += allToRemove.size * state.config.ABILITY_CHARGE_PER_BALL;
+                while(state.abilityCharge >= state.config.ABILITY_CHARGE_GOAL) { state.earnedAbilities.colorBomb++; state.abilityCharge -= state.config.ABILITY_CHARGE_GOAL; }
                 return true;
             }
             return false;
         }
         
-        async function removeItems(itemSet, score, popupCoordsKey) {
+        async function removeItems(itemSet, score, showPoints) {
             state.score += Math.floor(score);
-            showScorePopup(score, popupCoordsKey ? [popupCoordsKey] : [...itemSet]);
+            let avgR=0, avgC=0, arr = Array.from(itemSet);
+            arr.forEach(k => { const [r,c]=k.split('-'); avgR+=parseInt(r); avgC+=parseInt(c); });
+            avgR/=arr.length; avgC/=arr.length;
+
+            if (showPoints) showFloatingText(`+${Math.floor(score)}`, avgR, avgC, 'score-text');
+            if (state.comboCounter > 1) {
+                const words =["", "", "SZÉP!", "KIRÁLY!", "PROFI!", "ISTENI!", "MEGÁLLÍTHATATLAN!"];
+                let w = words[Math.min(state.comboCounter, words.length-1)];
+                showFloatingText(`${state.comboCounter}X KOMBÓ! ${w}`, avgR-1, avgC, 'combo-text');
+            }
+
             for (const key of itemSet) {
                 const [r, c] = key.split('-').map(Number);
+                const item = state.board[r][c];
                 state.board[r][c] = null;
-                getCell(r, c)?.querySelector('.ball:not(.ghost)')?.classList.add('popping');
-            }
-            await new Promise(resolve => setTimeout(resolve, 400));
-            document.querySelectorAll('.ball.popping').forEach(b => b.remove());
-        }
-
-        async function addRandomItems(count, checkForLines = true) {
-            const emptyCells = [];
-            for (let r=0; r<config.GRID_SIZE; r++) for (let c=0; c<config.GRID_SIZE; c++) if (!state.board[r][c]) emptyCells.push({r,c});
-            if (emptyCells.length < count) { gameOver(); return; }
-
-            const itemsToPlace = (count === config.BALLS_PER_TURN) ? [...state.nextItems] : Array(count).fill(null).map(() => generateRandomItem(false));
-            for (const item of itemsToPlace) {
-                if(emptyCells.length === 0) break;
-                const randIndex = Math.floor(Math.random() * emptyCells.length);
-                const { r, c } = emptyCells.splice(randIndex, 1)[0];
-                state.board[r][c] = item;
-                placeItemOnBoard(r, c, item, true);
-                await new Promise(res => setTimeout(res, 60));
-            }
-            
-            if (count === config.BALLS_PER_TURN && Math.random() < config.STONE_CHANCE && emptyCells.length > 0) {
-                const randIndex = Math.floor(Math.random() * emptyCells.length);
-                const { r, c } = emptyCells.splice(randIndex, 1)[0];
-                const stone = {type: 'stone'};
-                state.board[r][c] = stone; placeItemOnBoard(r, c, stone, true);
-            }
-
-            if (count === config.BALLS_PER_TURN) generateNextItems();
-            updateUI();
-            if(checkForLines) await checkForLinesAndRemove();
-        }
-
-        function generateRandomItem(allowBomb = true) {
-            const rand = Math.random();
-            if (allowBomb && rand < config.BOMB_CHANCE) return { type: 'bomb' };
-            if (rand < config.BOMB_CHANCE + config.CHAMELEON_CHANCE) return { type: 'chameleon' };
-            return { type: 'ball', color: config.COLORS[Math.floor(Math.random() * config.COLORS.length)] };
-        }
-        
-        function generateNextItems() { state.nextItems = Array(config.BALLS_PER_TURN).fill(null).map(() => generateRandomItem()); }
-
-        function updateUI() {
-            DOMElements.score.textContent = state.score; DOMElements.highScore.textContent = state.highScore;
-            DOMElements.undoCount.textContent = state.undoCount;
-            DOMElements.undoButton.disabled = state.undoCount === 0 || !state.undoState || state.isAnimating;
-            DOMElements.nextBalls.innerHTML = '';
-            state.nextItems.forEach(item => DOMElements.nextBalls.appendChild(createItemSVG(item)));
-            DOMElements.comboCounter.textContent = `x${state.comboCounter}`;
-            DOMElements.abilityBarFill.style.width = `${Math.min(100, (state.abilityCharge / config.ABILITY_CHARGE_GOAL) * 100)}%`;
-            DOMElements.colorBombCount.textContent = state.earnedAbilities.colorBomb;
-            DOMElements.colorBombButton.disabled = state.earnedAbilities.colorBomb === 0 || state.isAnimating;
-        }
-
-        function activateAbility(abilityType) {
-            if (state.isAnimating) return;
-            if (abilityType === 'colorBomb' && state.earnedAbilities.colorBomb > 0) {
-                state.activeAbility = 'colorBomb';
-                document.body.classList.add('ability-active');
-            }
-        }
-
-        async function handleAbilityUse(r, c) {
-            const item = state.board[r][c];
-            if (state.activeAbility === 'colorBomb') {
-                if (item && item.type === 'ball') {
-                    state.isAnimating = true;
-                    state.earnedAbilities.colorBomb--;
-                    const toRemove = new Set();
-                    for (let row = 0; row < config.GRID_SIZE; row++) {
-                        for (let col = 0; col < config.GRID_SIZE; col++) {
-                            const currentItem = state.board[row][col];
-                            if (currentItem?.color === item.color) {
-                                toRemove.add(`${row}-${col}`);
-                            }
-                        }
-                    }
-                    await removeItems(toRemove, toRemove.size * 10, `${r}-${c}`);
-                    generateNextItems(); runGameTurn(true);
+                const cell = getCell(r, c);
+                const ball = cell.querySelector('.ball:not(.ghost)');
+                if (ball) {
+                    ball.style.transform = 'scale(0)'; ball.style.opacity='0';
+                    let colHex = (item && CSS_COLORS[item.color]) ? CSS_COLORS[item.color] : '#fff';
+                    if(item && item.type === 'virus') colHex = '#22c55e';
+                    triggerEpicExplosion(r, c, colHex);
+                    setTimeout(() => ball.remove(), 300);
                 }
             }
-            state.activeAbility = null;
-            document.body.classList.remove('ability-active');
+            await new Promise(resolve => setTimeout(resolve, 400));
         }
 
-        function onCellHover(r, c) { clearPreviews(); if (state.isAnimating || !state.selectedItem || state.board[r][c]) return; const path = findPath(state.selectedItem.r, state.selectedItem.c, r, c); if (path) { drawPath(path); const ghostItem = createItemSVG(state.selectedItem, true); getCell(r, c).appendChild(ghostItem); }}
-        function placeItemOnBoard(r, c, item, spawnAnim = false) { const itemEl = createItemSVG(item); if (spawnAnim) itemEl.classList.add('spawning'); getCell(r, c).appendChild(itemEl); }
-        function findPath(fromR, fromC, toR, toC) { const originalCell = state.board[fromR][fromC]; state.board[fromR][fromC] = null; const q = [[{ r: fromR, c: fromC }]]; const v = new Set([`${fromR}-${fromC}`]); let foundPath = null; while (q.length > 0) { const p = q.shift(); const { r, c } = p[p.length - 1]; if (r === toR && c === toC) { foundPath = p; break; } const n = [{ r: r - 1, c }, { r: r + 1, c }, { r, c: c - 1 }, { r, c: c + 1 }]; for (const { r: nr, c: nc } of n) { const k = `${nr}-${nc}`; if (nr >= 0 && nr < config.GRID_SIZE && nc >= 0 && nc < config.GRID_SIZE && !state.board[nr][nc] && !v.has(k)) { v.add(k); q.push([...p, { r: nr, c: nc }]); } } } state.board[fromR][fromC] = originalCell; return foundPath; }
-        function saveUndoState() { state.undoState = { board: JSON.parse(JSON.stringify(state.board)), score: state.score, comboCounter: state.comboCounter, abilityCharge: state.abilityCharge, earnedAbilities: JSON.parse(JSON.stringify(state.earnedAbilities)) }; }
-        function handleUndo() { if (state.undoCount > 0 && state.undoState && !state.isAnimating) { state.isAnimating = true; Object.assign(state, { board: JSON.parse(JSON.stringify(state.undoState.board)), score: state.undoState.score, comboCounter: state.undoState.comboCounter, abilityCharge: state.undoState.abilityCharge, earnedAbilities: JSON.parse(JSON.stringify(state.undoState.earnedAbilities)), undoCount: state.undoCount - 1, undoState: null }); DOMElements.board.querySelectorAll('.ball').forEach(b => b.remove()); for (let r = 0; r < config.GRID_SIZE; r++) for (let c = 0; c < config.GRID_SIZE; c++) { if (state.board[r][c]) placeItemOnBoard(r, c, state.board[r][c]); } updateUI(); state.isAnimating = false; } }
-        function gameOver() { DOMElements.gameOverScreen.classList.add('visible'); state.isAnimating = true; }
-        function clearPreviews() { if (DOMElements.pathOverlay) DOMElements.pathOverlay.innerHTML = ''; document.querySelector('.ball.ghost')?.remove(); }
-        function getCell(r, c) { return document.querySelector(`.cell[data-r='${r}'][data-c='${c}']`); }
-        function showScorePopup(points, positionKeys) { const popup = document.createElement('div'); popup.textContent = `+${Math.floor(points)}`; popup.className = 'score-popup'; let avgR = 0, avgC = 0; positionKeys.forEach(key => { const [r, c] = key.split('-'); avgR += parseInt(r); avgC += parseInt(c); }); avgR /= positionKeys.length; avgC /= positionKeys.length; popup.style.left = `${avgC * getCell(0,0).offsetWidth}px`; popup.style.top = `${avgR * getCell(0,0).offsetHeight}px`; DOMElements.board.appendChild(popup); setTimeout(() => popup.remove(), 1200); }
-        function drawPath(path) { const cellSize = getCell(0, 0).offsetWidth; const points = path.map(p => `${p.c * cellSize + cellSize / 2},${p.r * cellSize + cellSize / 2}`).join(' '); const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline'); polyline.setAttribute('points', points); polyline.id = 'path-line'; DOMElements.pathOverlay.innerHTML = ''; DOMElements.pathOverlay.appendChild(polyline); }
+        // --- SPAWN GENERÁLÁS ---
+        function placeInitialObstacles() {
+            let sPlaced = 0, vPlaced = 0;
+            while(sPlaced < state.config.INITIAL_STONES) {
+                const r = Math.floor(Math.random() * state.config.GRID_SIZE), c = Math.floor(Math.random() * state.config.GRID_SIZE);
+                if (!state.board[r][c]) { state.board[r][c] = {type: 'stone'}; placeItemOnBoard(r, c, state.board[r][c]); sPlaced++; }
+            }
+            while(vPlaced < state.config.INITIAL_VIRUS) {
+                const r = Math.floor(Math.random() * state.config.GRID_SIZE), c = Math.floor(Math.random() * state.config.GRID_SIZE);
+                if (!state.board[r][c] && !state.goldCells.has(`${r}-${c}`)) { state.board[r][c] = {type: 'virus'}; placeItemOnBoard(r, c, state.board[r][c]); vPlaced++; }
+            }
+        }
 
-        DOMElements.restartButton.addEventListener('click', initGame);
-        DOMElements.undoButton.addEventListener('click', handleUndo);
-        DOMElements.colorBombButton.addEventListener('click', () => activateAbility('colorBomb'));
-        initGame();
+        async function addRandomItems(count, checkClusters = true) {
+            const emptyCells =[]; for (let r=0;r<state.config.GRID_SIZE;r++) for (let c=0;c<state.config.GRID_SIZE;c++) if (!state.board[r][c]) emptyCells.push({r,c});
+            if (emptyCells.length === 0) return;
+
+            const actualCount = Math.min(count, emptyCells.length);
+            const itemsToPlace = (count === state.config.BALLS_PER_TURN && actualCount === state.config.BALLS_PER_TURN) ?[...state.nextItems] : Array(actualCount).fill(null).map(() => generateRandomItem(false));
+            
+            for (const item of itemsToPlace) {
+                const { r, c } = emptyCells.splice(Math.floor(Math.random() * emptyCells.length), 1)[0];
+                state.board[r][c] = item; placeItemOnBoard(r, c, item, true);
+                await new Promise(res => setTimeout(res, 30));
+            }
+
+            if (count === state.config.BALLS_PER_TURN) generateNextItems();
+            updateUI(); if(checkClusters) {
+                const extraRemoved = await checkForClustersAndRemove();
+                if(!extraRemoved && !state.virusDestroyedThisTurn) await spreadVirus();
+            }
+        }
+
+        function generateRandomItem(allowSpecial = true) {
+            const color = state.config.COLORS[Math.floor(Math.random() * state.config.COLORS.length)];
+            if (!allowSpecial) return { type: 'ball', color };
+            const rand = Math.random();
+            if (rand < state.config.TIMEBOMB_CHANCE) return { type: 'timebomb', color, timer: 10 + Math.floor(Math.random()*5) };
+            if (rand < state.config.TIMEBOMB_CHANCE + state.config.CROSSBOMB_CHANCE) return { type: 'crossbomb' };
+            if (rand < state.config.TIMEBOMB_CHANCE + state.config.CROSSBOMB_CHANCE + state.config.BOMB_CHANCE) return { type: 'bomb' };
+            if (rand < state.config.TIMEBOMB_CHANCE + state.config.CROSSBOMB_CHANCE + state.config.BOMB_CHANCE + state.config.CHAMELEON_CHANCE) return { type: 'chameleon' };
+            return { type: 'ball', color };
+        }
+        function generateNextItems() { state.nextItems = Array(state.config.BALLS_PER_TURN).fill(null).map(() => generateRandomItem()); }
+
+        // --- UI & UTILS ---
+        function updateUI() {
+            DOM.score.textContent = state.score; DOM.goalScore.textContent = state.config.GOAL_SCORE;
+            DOM.goalBarFill.style.width = `${Math.min(100, (state.score / state.config.GOAL_SCORE) * 100)}%`;
+            DOM.undoCount.textContent = state.undoCount; DOM.undoButton.disabled = state.undoCount === 0 || !state.undoState || state.isAnimating;
+            DOM.ballsPerTurnUI.textContent = state.config.BALLS_PER_TURN; DOM.nextBalls.innerHTML = '';
+            state.nextItems.forEach(item => DOM.nextBalls.appendChild(createItemSVG(item)));
+            DOM.comboCounter.textContent = state.comboCounter > 1 ? `${state.comboCounter}X Szorzó!` : '';
+            DOM.abilityBarFill.style.width = `${Math.min(100, (state.abilityCharge / state.config.ABILITY_CHARGE_GOAL) * 100)}%`;
+            DOM.colorBombCount.textContent = state.earnedAbilities.colorBomb;
+            DOM.colorBombButton.disabled = state.earnedAbilities.colorBomb === 0 || state.isAnimating;
+            
+            if(state.activeAbility) { DOM.colorBombButton.textContent = 'Mégse'; DOM.colorBombButton.style.background = '#ef4444'; }
+            else { DOM.colorBombButton.innerHTML = `<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>Aktiválás (<span id="color-bomb-count">${state.earnedAbilities.colorBomb}</span>)`; DOM.colorBombButton.style.background = ''; }
+        }
+
+        function toggleColorBomb() {
+            if (state.isAnimating || state.earnedAbilities.colorBomb === 0) return;
+            if (state.activeAbility === 'colorBomb') { state.activeAbility = null; document.body.classList.remove('ability-active'); }
+            else { state.activeAbility = 'colorBomb'; document.body.classList.add('ability-active'); clearPreviews(); }
+            updateUI();
+        }
+
+        function showFloatingText(text, r, c, className) {
+            const popup = document.createElement('div'); popup.textContent = text; popup.className = `floating-text ${className}`;
+            popup.style.left = `${c * getCell(0,0).offsetWidth + (getCell(0,0).offsetWidth/2)}px`; popup.style.top = `${r * getCell(0,0).offsetHeight}px`; popup.style.transform = 'translate(-50%, -50%)';
+            DOM.board.appendChild(popup); setTimeout(() => popup.remove(), 2000);
+        }
+
+        function findPath(fromR, fromC, toR, toC) { const o = state.board[fromR][fromC]; state.board[fromR][fromC] = null; const q = [[{ r: fromR, c: fromC }]]; const v = new Set([`${fromR}-${fromC}`]); let found = null; while (q.length > 0) { const p = q.shift(); const { r, c } = p[p.length - 1]; if (r === toR && c === toC) { found = p; break; } const n =[{r: r-1, c}, {r: r+1, c}, {r, c: c-1}, {r, c: c+1}]; for (const { r: nr, c: nc } of n) { const k = `${nr}-${nc}`; if (nr >= 0 && nr < state.config.GRID_SIZE && nc >= 0 && nc < state.config.GRID_SIZE && !state.board[nr][nc] && !v.has(k)) { v.add(k); q.push([...p, { r: nr, c: nc }]); } } } state.board[fromR][fromC] = o; return found; }
+        
+        function onCellHover(r, c) { clearPreviews(); if (state.isAnimating || !state.selectedItem || state.board[r][c] || state.activeAbility) return; const path = findPath(state.selectedItem.r, state.selectedItem.c, r, c); if (path) { const cellSize = getCell(0, 0).offsetWidth; const points = path.map(p => `${p.c * cellSize + cellSize / 2},${p.r * cellSize + cellSize / 2}`).join(' '); const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polyline'); poly.setAttribute('points', points); poly.id = 'path-line'; DOM.pathOverlay.appendChild(poly); const ghost = createItemSVG(state.selectedItem, true); getCell(r, c).appendChild(ghost); }}
+        function clearPreviews() { if (DOM.pathOverlay) DOM.pathOverlay.innerHTML = ''; document.querySelector('.ball.ghost')?.remove(); }
+        function getCell(r, c) { return document.querySelector(`.cell[data-r='${r}'][data-c='${c}']`); }
+        
+        function saveUndoState() { state.undoState = { board: JSON.parse(JSON.stringify(state.board)), score: state.score, comboCounter: state.comboCounter, abilityCharge: state.abilityCharge, earnedAbilities: JSON.parse(JSON.stringify(state.earnedAbilities)) }; }
+        function handleUndo() { if (state.undoCount > 0 && state.undoState && !state.isAnimating) { state.isAnimating = true; Object.assign(state, { board: JSON.parse(JSON.stringify(state.undoState.board)), score: state.undoState.score, comboCounter: state.undoState.comboCounter, abilityCharge: state.undoState.abilityCharge, earnedAbilities: JSON.parse(JSON.stringify(state.undoState.earnedAbilities)), undoCount: state.undoCount - 1, undoState: null, activeAbility: null }); document.body.classList.remove('ability-active'); DOM.board.querySelectorAll('.ball').forEach(b => b.remove()); for (let r = 0; r < state.config.GRID_SIZE; r++) for (let c = 0; c < state.config.GRID_SIZE; c++) { if (state.board[r][c]) placeItemOnBoard(r, c, state.board[r][c]); } updateUI(); state.isAnimating = false; } }
+
+        DOM.btnContinue.addEventListener('click', () => startLevel(state.currentLevel));
+        DOM.btnNewGame.addEventListener('click', () => { if(confirm("Minden eddigi haladásod elvész. Kezdhetjük?")) { localStorage.setItem('szinFormaBombs', 0); state.earnedAbilities.colorBomb = 0; startLevel(1); }});
+        DOM.btnNextLevel.addEventListener('click', () => startLevel(state.currentLevel + 1));
+        DOM.btnRetryLevel.addEventListener('click', () => startLevel(state.currentLevel));
+        DOM.btnMenu.addEventListener('click', openMenu); DOM.btnMenuFromLose.addEventListener('click', openMenu);
+        DOM.undoButton.addEventListener('click', handleUndo); DOM.colorBombButton.addEventListener('click', toggleColorBomb);
+
+        openMenu();
     });
     </script>
 </body>
