@@ -3,998 +3,1262 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Színözön: Bármilyen Forma (1000 Szint)</title>
+    <title>Színözön: Bajnoki Kiadás</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
-        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Inter:wght@400;500;600;700;800&display=swap');
 
         :root {
-            --grid-size: 8;
-            --cell-size: min(80vh / var(--grid-size), calc((100vw - 420px) / var(--grid-size)), 90px);
-            
-            --color-bg: #030008; --color-panel-bg: rgba(10, 10, 15, 0.85); --color-board-bg: rgba(5, 5, 10, 0.7);
-            --color-border: #333; --color-text-primary: #fff; --color-text-secondary: #aaa;
-            --color-accent: #f43f5e; --color-success: #10b981; --color-glass: #38bdf8;
-            
-            --ball-green: #10b981; --ball-purple: #a855f7; --ball-orange: #f97316; 
-            --ball-yellow: #facc15; --ball-magenta: #ec4899; --ball-blue: #3b82f6;  
-            --ball-red: #ef4444; --ball-cyan: #06b6d4; 
+            --bg-color: #0f172a;
+            --accent: #f43f5e;
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --board-size: min(85vh, 95vw, 600px);
+            --grid-dim: 8;
         }
 
-        @media (max-width: 1024px) { :root { --cell-size: min(65vh / var(--grid-size), calc((100vw - 40px) / var(--grid-size)), 85px); } }
-        @media (max-width: 800px) { :root { --cell-size: min(calc((100vw - 20px) / var(--grid-size)), calc((100dvh - 380px) / var(--grid-size))); } }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
         body {
-            font-family: 'Inter', sans-serif; display: flex; flex-direction: column; justify-content: flex-start; align-items: center;
-            min-height: 100dvh; background-color: var(--color-bg); margin: 0; padding: 10px; box-sizing: border-box;
-            color: var(--color-text-primary); overflow-x: hidden; touch-action: manipulation;
-            -webkit-tap-highlight-color: transparent;
+            margin: 0; padding: 0; background-color: var(--bg-color); color: #f8fafc;
+            font-family: 'Inter', sans-serif; overflow-x: hidden;
+            display: flex; flex-direction: column; align-items: center; min-height: 100vh;
+            touch-action: pan-y;
         }
 
-        body.ability-active { cursor: crosshair; box-shadow: inset 0 0 100px rgba(244, 63, 94, 0.4); }
-
-        /* Lenyűgöző Dinamikus Vektor Háttér - STATIKUS (Zéró Lag, nincs animáció) */
-        #vector-bg {
-            position: fixed; inset: -10%; width: 120%; height: 120%; z-index: -10;
-            background-image: url("data:image/svg+xml,%3Csvg width='100' height='173.2' viewBox='0 0 100 173.2' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 0 L100 28.8 L100 86.6 L50 115.4 L0 86.6 L0 28.8 Z' fill='none' stroke='rgba(168, 85, 247, 0.1)' stroke-width='1'/%3E%3Cpath d='M50 173.2 L100 144.4 L100 86.6 L50 57.8 L0 86.6 L0 144.4 Z' fill='none' stroke='rgba(56, 189, 248, 0.05)' stroke-width='1'/%3E%3Ccircle cx='50' cy='0' r='1.5' fill='rgba(255,255,255,0.2)'/%3E%3Ccircle cx='100' cy='86.6' r='1.5' fill='rgba(255,255,255,0.2)'/%3E%3C/svg%3E");
-            background-size: 150px 259.8px;
-            background-position: center;
-        }
-        #vector-glow {
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 100vw; height: 100vh; z-index: -9; pointer-events: none;
-            background: radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.15) 0%, rgba(168, 85, 247, 0.05) 50%, transparent 100%);
+        /* LETISZTULT HÁTTÉR */
+        #premium-bg {
+            position: fixed; inset: 0; z-index: -10;
+            background: radial-gradient(circle at 50% 0%, #1e293b 0%, #020617 80%);
         }
 
-        .page-header { margin-bottom: 5px; width: 100%; display: flex; justify-content: center; position: relative; z-index: 10; height: 60px; }
-        .page-header svg { max-width: 400px; width: 100%; height: 100%; }
-
-        .game-layout { display: flex; gap: 30px; align-items: flex-start; justify-content: center; width: 100%; position: relative; z-index: 5; }
-
-        /* Játéktábla */
-        #game-board-container { position: relative; }
-        #game-board {
-            width: calc(var(--grid-size) * var(--cell-size)); height: calc(var(--grid-size) * var(--cell-size));
-            display: grid; grid-template-columns: repeat(var(--grid-size), 1fr); background-color: var(--color-board-bg);
-            border-radius: 12px; box-shadow: 0 0 50px rgba(0,0,0,0.8), inset 0 0 25px rgba(255,255,255,0.05); 
-            position: relative; border: 3px solid rgba(255,255,255,0.1); user-select: none; transition: width 0.3s, height 0.3s, grid-template-columns 0.3s;
-            touch-action: none; backdrop-filter: blur(10px);
+        /* LOGÓ */
+        .logo-wrapper { margin: 15px 0 10px 0; width: 100%; text-align: center; z-index: 100; cursor: pointer;}
+        .logo-front {
+            font-family: 'Fredoka One'; font-size: clamp(2rem, 6vw, 2.8rem);
+            background: linear-gradient(135deg, #ffffff, #cbd5e1);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            letter-spacing: 1px; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
+        .logo-front:active { transform: scale(0.95); }
 
-        .shake-hard { animation: shake-hard 0.2s cubic-bezier(.36,.07,.19,.97) both; will-change: transform; }
-        .shake-mega { animation: shake-mega 0.4s cubic-bezier(.36,.07,.19,.97) both; box-shadow: 0 0 50px var(--color-accent); will-change: transform; }
-        @keyframes shake-hard { 0%, 100% { transform: translate3d(0, 0, 0); } 20%, 60% { transform: translate3d(-4px, 4px, 0); } 40%, 80% { transform: translate3d(4px, -4px, 0); } }
-        @keyframes shake-mega { 0%, 100% { transform: translate3d(0, 0, 0) scale(1); } 10%, 30%, 50%, 70%, 90% { transform: translate3d(-10px, -10px, 0) scale(1.02) rotate(-1deg); } 20%, 40%, 60%, 80% { transform: translate3d(10px, 10px, 0) scale(1.02) rotate(1deg); } }
+        /* JÁTÉK ELRENDEZÉS */
+        .main-layout { display: flex; gap: 24px; padding: 10px; width: 100%; max-width: 1100px; justify-content: center; align-items: flex-start; z-index: 10; }
+        @media (max-width: 900px) { .main-layout { flex-direction: column; align-items: center; } }
 
-        #path-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
-        #path-line { stroke: rgba(255,255,255,0.4); stroke-width: calc(var(--cell-size) * 0.08); stroke-dasharray: 8 8; fill: none; stroke-linecap: round; }
-
-        /* Cellák és Üvegfal Overlay */
-        .cell { position: relative; border-right: 1px solid rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.05); box-sizing: border-box; }
-        .cell:nth-child(var(--grid-size)n) { border-right: none; }
-        .cell:nth-last-child(-n + var(--grid-size)) { border-bottom: none; }
+        /* TÁBLA ÉS HARDVERES REMEGÉS */
+        .board-container {
+            position: relative; padding: 10px; background: rgba(30, 41, 59, 0.4);
+            border-radius: 20px; border: 1px solid var(--glass-border);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.6);
+            will-change: transform;
+        }
         
-        .glass-floor { position: absolute; inset: 2px; z-index: 2; pointer-events: none; opacity: 0.8; }
-        
-        .cell.gold-cell { background: radial-gradient(circle, rgba(250, 204, 21, 0.25) 0%, transparent 70%); animation: pulse-gold 2s infinite alternate; }
-        @keyframes pulse-gold { from { box-shadow: inset 0 0 5px rgba(250, 204, 21, 0.1); } to { box-shadow: inset 0 0 20px rgba(250, 204, 21, 0.4); } }
+        .board-container.flash-shake { animation: smoothShake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes smoothShake {
+            0%, 100% { transform: translate3d(0,0,0); }
+            15% { transform: translate3d(-5px, -3px, 0); }
+            30% { transform: translate3d(4px, 3px, 0); }
+            45% { transform: translate3d(-3px, 2px, 0); }
+            60% { transform: translate3d(2px, -2px, 0); }
+            75% { transform: translate3d(-1px, 1px, 0); }
+        }
 
-        /* Golyók (Pattogós mozgáshoz optimalizálva) */
+        #board {
+            display: grid; width: var(--board-size); height: var(--board-size); gap: 5px;
+            grid-template-columns: repeat(var(--grid-dim), 1fr); grid-template-rows: repeat(var(--grid-dim), 1fr);
+            position: relative; touch-action: none;
+        }
+
+        /* SVG ÚTVONAL */
+        #path-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+        .path-line {
+            stroke: #38bdf8; stroke-width: 4px; fill: none; stroke-linecap: round; stroke-linejoin: round;
+            filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.8));
+            stroke-dasharray: 12 12; animation: energy-flow 0.5s linear infinite; opacity: 0.8;
+        }
+        @keyframes energy-flow { to { stroke-dashoffset: -24; } }
+
+        /* CELLÁK ÉS GYŰJTHETŐK */
+        .cell {
+            background: rgba(15, 23, 42, 0.6); border-radius: 50%;
+            position: relative; display: flex; justify-content: center; align-items: center;
+            cursor: pointer; transition: background 0.2s ease;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.03);
+        }
+        .cell:hover { background: rgba(30, 41, 59, 0.8); }
+        
+        .cell.diamond { background: radial-gradient(circle, rgba(250, 204, 21, 0.15) 0%, rgba(15, 23, 42, 0.6) 70%); border: 1px dashed rgba(250, 204, 21, 0.4); }
+        .cell.diamond::before { content: '💎'; position: absolute; font-size: clamp(0.8rem, 2vw, 1.1rem); opacity: 0.5; animation: diamondPulse 2.5s infinite alternate; z-index: 1; pointer-events: none; }
+        
+        .cell.timespark { background: radial-gradient(circle, rgba(139, 92, 246, 0.25) 0%, rgba(15, 23, 42, 0.6) 70%); border: 1px solid rgba(139, 92, 246, 0.5); box-shadow: inset 0 0 10px rgba(139, 92, 246, 0.3); }
+        .cell.timespark::before { content: '⚡'; position: absolute; font-size: clamp(0.8rem, 2vw, 1.1rem); opacity: 0.7; animation: sparkPulse 1.5s infinite alternate; z-index: 1; pointer-events: none; }
+
+        @keyframes diamondPulse { to { filter: brightness(1.5); transform: translateY(-2px); } }
+        @keyframes sparkPulse { to { filter: brightness(1.8) drop-shadow(0 0 5px #8b5cf6); transform: scale(1.1); } }
+
+        /* GOLYÓK FIZIKÁJA */
+        .ball-wrapper {
+            position: absolute; width: 100%; height: 100%; pointer-events: none; z-index: 20;
+            display: flex; justify-content: center; align-items: center;
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            will-change: transform, opacity;
+        }
+        .ball-wrapper.removing { animation: popOut 0.2s cubic-bezier(0.6, -0.28, 0.735, 0.045) forwards; }
+        
+        @keyframes popIn { 0% { transform: scale(0.3); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        @keyframes popOut { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(0.5); opacity: 0; } }
+
         .ball {
-            width: 100%; height: 100%; position: absolute; top: 0; left: 0;
-            cursor: pointer; will-change: transform; z-index: 10;
-            transition: transform 0.15s cubic-bezier(0.25, 0.8, 0.25, 1);
-            transform: scale(0.92);
+            width: 84%; height: 84%; border-radius: 50%; position: relative;
+            display: flex; justify-content: center; align-items: center; font-size: clamp(1rem, 3vw, 1.6rem);
+            background: radial-gradient(circle at 35% 30%, var(--ball-color, #fff) 0%, var(--ball-dark, #333) 85%);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4), inset -3px -3px 6px rgba(0,0,0,0.3), inset 2px 2px 5px rgba(255,255,255,0.4);
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
-        @media (hover: hover) { .ball:hover { transform: scale(1.0) translateY(-3px); z-index: 15; } }
         
-        .ball.ghost { opacity: 0.15; pointer-events: none; z-index: 6; }
-        .ball.stone, .ball.virus, .ball.iced { cursor: not-allowed; }
-        .ball.virus { animation: slime-pulse 1s infinite; }
-        .ball.selected { animation: select-bounce 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) infinite alternate; z-index: 20;}
-        .ball.spawning { animation: spawn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
-        
-        .timer-text { position: absolute; top: 48%; left: 50%; transform: translate(-50%, -50%); font-family: 'Fredoka One', cursive; font-size: calc(var(--cell-size) * 0.45); color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.8); pointer-events: none; z-index: 20; }
+        .ball-wrapper.selected .ball { transform: scale(1.15) translateY(-2px); box-shadow: 0 8px 15px rgba(0,0,0,0.5), 0 0 12px var(--ball-color), inset -3px -3px 6px rgba(0,0,0,0.3), inset 2px 2px 5px rgba(255,255,255,0.4); }
 
-        @keyframes select-bounce { from { transform: scale(0.92) translate3d(0,0,0); } to { transform: scale(1.05) translate3d(0,-10%,0); } }
-        @keyframes spawn { 0% { transform: scale(0) translate3d(0,0,0); opacity: 0; } 100% { transform: scale(0.92) translate3d(0,0,0); opacity: 1; } }
-        @keyframes slime-pulse { 0%, 100% { transform: scale(0.88); } 50% { transform: scale(0.98); } }
+        /* HTML5 RÉSZECSKERENDSZER */
+        .html-particle { position: absolute; border-radius: 50%; pointer-events: none; z-index: 50; animation: blast 0.4s cubic-bezier(0.1, 0.8, 0.3, 1) forwards; box-shadow: 0 0 8px currentColor; will-change: transform, opacity; }
+        @keyframes blast { 0% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.1); opacity: 0; } }
 
-        /* Pehelysúlyú Gyors Effektek */
-        .epic-explosion { position: absolute; pointer-events: none; z-index: 50; top: 50%; left: 50%; width: 200%; height: 200%; background: radial-gradient(circle, var(--exp-color) 0%, rgba(255,255,255,0.8) 20%, transparent 60%); border-radius: 50%; mix-blend-mode: screen; animation: blast 0.3s ease-out forwards; will-change: transform, opacity; }
+        /* SPECIÁLIS GOLYÓK ÉS ERŐSÍTŐK */
+        .szivarvany { background: conic-gradient(from 0deg, #ff2a55, #facc15, #10b981, #06b6d4, #3b82f6, #d946ef, #ff2a55); animation: spinRainbow 3.5s linear infinite; box-shadow: 0 4px 8px rgba(0,0,0,0.4), inset 0 0 10px rgba(255,255,255,0.8); }
+        @keyframes spinRainbow { 100% { transform: rotate(360deg); } }
+        .bomb-ball { font-family: 'Fredoka One'; color: #fff; background: radial-gradient(circle at 30% 30%, #475569, #0f172a); }
+        .nuke-ball { font-family: 'Fredoka One'; color: #fff; background: radial-gradient(circle at 30% 30%, #ef4444, #450a0a); box-shadow: 0 0 10px #ef4444; animation: nukePulse 0.8s infinite alternate; }
+        @keyframes nukePulse { to { transform: scale(1.08); box-shadow: 0 0 20px #ef4444, inset 0 0 10px #000; } }
         
-        .shard {
-            position: absolute; left: 50%; top: 50%; width: calc(var(--cell-size) * 0.15); height: calc(var(--cell-size) * 0.15);
-            pointer-events: none; z-index: 45; background-color: var(--exp-color); will-change: transform, opacity;
-            animation: shatter 1s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+        .stripe-h { position: absolute; width: 100%; height: 4px; background: rgba(255,255,255,0.95); border-radius: 2px; box-shadow: 0 0 8px rgba(255,255,255,0.8); top: calc(50% - 2px); z-index: 15; }
+        .stripe-v { position: absolute; height: 100%; width: 4px; background: rgba(255,255,255,0.95); border-radius: 2px; box-shadow: 0 0 8px rgba(255,255,255,0.8); left: calc(50% - 2px); z-index: 15; }
+
+        /* OLDALSÓ SÁV & STATISZTIKA */
+        .sidebar {
+            width: 100%; max-width: 320px; background: rgba(30, 41, 59, 0.4); padding: 20px; border-radius: 20px;
+            border: 1px solid var(--glass-border); display: flex; flex-direction: column; gap: 12px;
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: 0 20px 40px rgba(0,0,0,0.4);
         }
-
-        @keyframes blast { 0% { transform: translate(-50%, -50%) scale(0.1); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; } }
-        @keyframes shatter { 0% { transform: translate3d(-50%, -50%, 0) scale(1) rotate(0deg); opacity: 1; } 100% { transform: translate3d(calc(-50% + var(--tx)), calc(-50% + var(--ty)), 0) scale(0) rotate(var(--rot)); opacity: 0; } }
-
-        /* UI Panel */
-        .game-ui-panel { width: 320px; flex-shrink: 0; padding: 25px; background-color: var(--color-panel-bg); border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,1); border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 15px; z-index: 10; box-sizing: border-box; backdrop-filter: blur(15px); }
         
-        .level-badge { background: linear-gradient(135deg, #f43f5e, #fb923c); color: white; padding: 10px 15px; border-radius: 8px; font-weight: 900; font-size: 1.3em; text-align: center; letter-spacing: 2px; text-transform: uppercase; box-shadow: 0 4px 15px rgba(244, 63, 94, 0.4); text-shadow: 1px 1px 0px rgba(0,0,0,0.5); }
-        .boss-badge { background: linear-gradient(135deg, #991b1b, #ef4444); animation: pulse-boss 0.8s infinite alternate;}
-        @keyframes pulse-boss { from { filter: brightness(1); transform: scale(1); } to { filter: brightness(1.3); transform: scale(1.05); } }
+        /* GÖRDÍTHETŐ KÜLDETÉS KONTÉNER */
+        #objectives-container { display: flex; flex-direction: column; gap: 10px; max-height: 48vh; overflow-y: auto; padding-right: 5px; }
+        #objectives-container::-webkit-scrollbar { width: 4px; }
+        #objectives-container::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
 
-        .ui-box { display: flex; flex-direction: column; gap: 8px; background: rgba(0,0,0,0.5); padding: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05); }
-        .ui-box.row { flex-direction: row; justify-content: space-between; align-items: baseline; background: none; padding: 0; border: none; }
-        .ui-box h2 { font-size: 0.85em; margin: 0; color: var(--color-text-secondary); font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
-        .ui-box .value { font-size: 2.2em; font-weight: 900; color: #fff; line-height: 1; font-family: 'Fredoka One', cursive; text-shadow: 2px 3px 0 #000; }
+        .stat-card { background: rgba(15, 23, 42, 0.5); padding: 12px 14px; border-radius: 10px; border-left: 3px solid var(--accent); transition: all 0.3s ease; position: relative; }
+        .stat-card:hover { background: rgba(15, 23, 42, 0.7); }
+        .stat-label { font-size: 0.8rem; text-transform: uppercase; color: #f8fafc; font-weight: 800; letter-spacing: 0.5px; display: flex; justify-content: space-between; align-items: center; }
+        .stat-desc { font-size: 0.7rem; color: #94a3b8; margin: 6px 0 8px 0; line-height: 1.3; font-weight: 500; text-transform: none; }
+        .stat-value { font-family: 'Fredoka One'; font-size: 1.2rem; color: #f8fafc; display: flex; justify-content: space-between; align-items: baseline; }
+        .progress { width: 100%; height: 5px; background: rgba(0,0,0,0.5); border-radius: 3px; margin-top: 6px; overflow: hidden; }
+        .fill { height: 100%; width: 0%; transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1); border-radius: 3px; }
+
+        /* KÜLDETÉS TELJESÍTVE */
+        .stat-card.completed {
+            border-left-color: #10b981 !important; background: linear-gradient(90deg, rgba(16, 185, 129, 0.15) 0%, rgba(15, 23, 42, 0.6) 100%);
+            animation: completePulse 0.5s ease-out forwards;
+        }
+        @keyframes completePulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 rgba(16,185,129,0); }
+            50% { transform: scale(1.02); box-shadow: 0 0 15px rgba(16,185,129,0.5); }
+            100% { transform: scale(1); box-shadow: inset 0 0 10px rgba(16, 185, 129, 0.15); }
+        }
+        .stat-card.completed .stat-label { color: #34d399; }
+        .stat-card.completed .stat-label::after { 
+            content: ' ✓ KÉSZ'; color: #10b981; font-weight: 900; text-shadow: 0 0 8px rgba(16,185,129,0.6); margin-left: auto; 
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .stat-card.completed .stat-desc { text-decoration: line-through; opacity: 0.6; }
+        .stat-card.completed .stat-value { color: #34d399; }
+        .stat-card.completed .fill { background: #10b981 !important; box-shadow: 0 0 8px #10b981; }
+
+        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .btn {
+            background: #334155; color: white; border: none; padding: 12px 6px;
+            border-radius: 10px; font-weight: 700; cursor: pointer; font-size: 0.85rem;
+            transition: all 0.2s; text-transform: uppercase; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+            border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        .btn:active:not(:disabled) { transform: scale(0.95); background: #1e293b; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
+        .btn-primary { background: var(--accent); }
+        .btn-primary:active:not(:disabled) { background: #e11d48; }
+        .btn-action { background: #8b5cf6; } 
+        .btn-action.active-timer { background: #eab308; color: #000; box-shadow: 0 0 15px rgba(234, 179, 8, 0.6); animation: pulseTimer 1s infinite alternate;}
         
-        .goal-container { width: 100%; background-color: #000; border-radius: 8px; height: 28px; position: relative; border: 2px solid #222; overflow: hidden; }
-        #goal-bar-fill { height: 100%; background: linear-gradient(90deg, #10b981, #34d399, #10b981); background-size: 200% 100%; width: 0%; transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
-        #wall-bar-fill { height: 100%; background: linear-gradient(90deg, #38bdf8, #7dd3fc, #38bdf8); background-size: 200% 100%; width: 0%; transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
-        .goal-text { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 0.95em; font-weight: 900; color: white; text-shadow: 1px 1px 2px #000; z-index: 2; letter-spacing: 1px; }
+        @keyframes pulseTimer { to { transform: scale(1.02); } }
 
-        #next-balls-preview { display: flex; gap: 10px; height: 40px; align-items: center; justify-content: center; }
-        #next-balls-preview .ball { position: static; width: 40px; height: 40px; transform: scale(1); }
-
-        /* Gombok */
-        .ui-button { width: 100%; padding: 16px; font-size: 1.1em; font-weight: 800; cursor: pointer; border: none; background: #222; color: #fff; border-radius: 8px; transition: transform 0.1s, background 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 5px 0 #000; }
-        .ui-button.primary { background: linear-gradient(to bottom, #f43f5e, #e11d48); box-shadow: 0 5px 0 #881337; }
-        .ui-button:active:not(:disabled) { transform: translateY(5px); box-shadow: 0 0 0 transparent !important; }
-        .ui-button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: 0 5px 0 #000 !important; }
-
-        .ability-bar-container { width: 100%; background-color: #000; border-radius: 4px; padding: 3px; border: 1px solid #333; }
-        #ability-bar-fill { width: 0%; height: 12px; background: linear-gradient(90deg, #f43f5e, #fb923c); border-radius: 2px; transition: width 0.3s ease-out; }
-
-        /* Lebegő szövegek */
-        .floating-text { position: absolute; font-family: 'Fredoka One', cursive; pointer-events: none; z-index: 80; animation: float-up 1.5s cubic-bezier(0.1, 0.9, 0.2, 1) forwards; text-align: center; text-transform: uppercase; }
-        .score-text { color: #fff; font-size: calc(var(--cell-size) * 0.7); text-shadow: 0 2px 4px #000, 0 0 10px var(--color-success); }
-        .combo-text { color: #facc15; font-size: calc(var(--cell-size) * 0.9); text-shadow: 0 2px 4px #000, 0 0 15px #f97316; }
-        .mega-text { color: #0ff; font-size: calc(var(--cell-size) * 1.2); text-shadow: 0 2px 6px #000, 0 0 20px #0ff; animation: mega-float 1.5s forwards; }
-        @keyframes float-up { 0% { opacity: 0; transform: translate3d(-50%, 10px, 0) scale(0.5); } 20% { opacity: 1; transform: translate3d(-50%, 0, 0) scale(1.2); } 100% { opacity: 0; transform: translate3d(-50%, -80px, 0) scale(0.8); } }
-        @keyframes mega-float { 0% { opacity: 0; transform: translate3d(-50%, 0, 0) scale(0.1) rotate(-10deg); } 15% { opacity: 1; transform: translate3d(-50%, 0, 0) scale(1.3) rotate(5deg); } 30% { transform: translate3d(-50%, 0, 0) scale(1) rotate(0deg); } 100% { opacity: 0; transform: translate3d(-50%, -100px, 0) scale(1.3); } }
-
-        /* Szint bemondó */
-        #level-announcer { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.1); font-family: 'Fredoka One', cursive; font-size: min(10vw, 80px); color: white; text-shadow: 0 5px 20px #000, 0 0 40px var(--color-accent); z-index: 100; opacity: 0; pointer-events: none; transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); white-space: nowrap; text-align: center; line-height: 1.1; }
-        #level-announcer.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-
-        /* Overlays & Menü */
-        .overlay { position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.90); display: flex; flex-direction: column; justify-content: center; align-items: center; opacity: 0; visibility: hidden; transition: all 0.3s ease; z-index: 200; padding: 20px; text-align: center; box-sizing: border-box; backdrop-filter: blur(8px); }
+        /* RÉSZLETGAZDAG PRÉMIUM LOGIN KÉPERNYŐ ÉS HÁTTÉR */
+        .overlay { position: fixed; inset: 0; background: rgba(2, 6, 23, 0.92); z-index: 1000; display: flex; justify-content: center; align-items: center; padding: 15px; transition: opacity 0.3s ease; opacity: 0; visibility: hidden; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
         .overlay.visible { opacity: 1; visibility: visible; }
-        .overlay-card { background: rgba(15,15,20, 0.95); padding: 40px; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,1), inset 0 0 0 2px rgba(255,255,255,0.1); max-width: 550px; width: 100%; display: flex; flex-direction: column; gap: 20px; transform: translate3d(0, 30px, 0); transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); box-sizing: border-box; }
-        .overlay.visible .overlay-card { transform: translate3d(0, 0, 0); }
         
-        .overlay-title { font-size: 3.5em; font-weight: 900; margin: 0; font-family: 'Fredoka One', cursive; text-shadow: 0 5px 10px #000; }
-        .title-win { color: var(--color-success); }
-        .title-lose { color: var(--color-accent); }
+        .login-anim-bg { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;}
+        .login-ball-bg { position: absolute; border-radius: 50%; opacity: 0.15; filter: blur(5px); animation: loginFloat linear infinite alternate; }
+        @keyframes loginFloat { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(var(--tx), var(--ty)) scale(1.3); } }
 
-        .menu-logo-container { position: relative; margin-bottom: 10px; display: flex; justify-content: center; align-items: center; height: 160px; }
+        .login-modal {
+            max-width: 420px; width: 100%; position: relative; padding: 40px; border-radius: 30px; text-align: center;
+            background: linear-gradient(145deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98));
+            border: 1px solid rgba(255,255,255,0.15);
+            box-shadow: 0 40px 80px rgba(0,0,0,0.9), 0 0 40px rgba(56, 189, 248, 0.15), inset 0 2px 20px rgba(255,255,255,0.05);
+        }
+        .login-modal::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+            background: linear-gradient(90deg, transparent, #38bdf8, #f43f5e, transparent); border-radius: 30px 30px 0 0;
+        }
+        
+        .login-logo-title {
+            font-family: 'Fredoka One'; font-size: clamp(2.6rem, 8vw, 3.6rem); margin-bottom: 25px; letter-spacing: 2px;
+            background: linear-gradient(to right, #fff 20%, #f43f5e 50%, #fff 80%); background-size: 200% auto;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            animation: textShine 4s linear infinite; filter: drop-shadow(0 4px 15px rgba(244, 63, 94, 0.4));
+        }
+        @keyframes textShine { to { background-position: 200% center; } }
+        
+        .login-input { 
+            width: 100%; padding: 18px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.15); background: rgba(2, 6, 23, 0.6); 
+            color: white; font-size: 1.15rem; text-align: center; transition: all 0.3s; font-family: 'Inter'; font-weight: 700; margin-bottom: 20px;
+            box-shadow: inset 0 4px 10px rgba(0,0,0,0.5);
+        }
+        .login-input:focus { border-color: #38bdf8; outline: none; background: rgba(15, 23, 42, 0.9); box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.25), inset 0 4px 10px rgba(0,0,0,0.5); }
+        
+        .leaderboard-cool { margin-bottom: 25px; background: rgba(2, 6, 23, 0.6); border-radius: 16px; padding: 12px; max-height: 220px; overflow-y: auto; box-shadow: inset 0 4px 15px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.05); }
+        .leaderboard-cool::-webkit-scrollbar { width: 4px; } .leaderboard-cool::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        .lb-item { display: flex; justify-content: space-between; padding: 12px 16px; border-radius: 10px; margin-bottom: 6px; font-size: 1rem; cursor: pointer; transition: all 0.2s; background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255,255,255,0.02); }
+        .lb-item:hover { background: rgba(255,255,255,0.08); border-color: rgba(56, 189, 248, 0.3); transform: translateX(2px); }
 
-        /* MOBIL/TABLET ELRENDEZÉS */
-        @media (max-width: 1024px) { 
-            .game-layout { flex-direction: column; align-items: center; gap: 15px; } 
-            .game-ui-panel { width: calc(var(--grid-size) * var(--cell-size)); max-width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 20px; } 
-            .game-ui-panel > div:nth-child(1), .game-ui-panel > div:nth-child(2), .game-ui-panel > div:nth-child(3) { grid-column: span 2; }
-            .overlay-card { padding: 30px; }
-        }
-        @media (max-width: 500px) {
-            .game-ui-panel { display: flex; flex-direction: column; gap: 10px; padding: 15px; }
-            .overlay-title { font-size: 2.5em; }
-        }
+        /* SIMA MODALOK */
+        .modal { max-width: 380px; width: 100%; background: rgba(30, 41, 59, 0.95); padding: 35px; border-radius: 24px; text-align: center; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 30px 60px rgba(0,0,0,0.8); }
+
+        /* ROULETTE SORSOLÁS UI */
+        .roulette-modal { max-width: 750px; width: 100%; padding: 25px; border-radius: 24px; background: rgba(15, 23, 42, 0.95); border: 2px solid #38bdf8; text-align: center; box-shadow: 0 20px 80px rgba(0,0,0,0.9), inset 0 0 40px rgba(56,189,248,0.1); position: relative; overflow: hidden; }
+        .reels-container { display: flex; gap: 8px; height: 200px; overflow: hidden; background: #020617; border-radius: 12px; border: 2px solid #334155; margin-bottom: 20px; box-shadow: inset 0 10px 30px rgba(0,0,0,0.9); position: relative; }
+        .reels-container::before, .reels-container::after { content:''; position: absolute; left:0; right:0; height: 50px; z-index: 10; pointer-events: none; }
+        .reels-container::before { top:0; background: linear-gradient(to bottom, #020617, transparent); }
+        .reels-container::after { bottom:0; background: linear-gradient(to top, #020617, transparent); }
+        
+        .reel-col { flex: 1; min-width: 110px; display: flex; flex-direction: column; will-change: transform; border-right: 1px solid rgba(255,255,255,0.05); }
+        .reel-col:last-child { border-right: none; }
+        .reel-card { height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding: 15px 10px; box-sizing: border-box; }
+        .reel-icon { font-size: 3rem; margin-bottom: 10px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.6)); }
+        .reel-title { font-size: 0.9rem; font-weight: 800; color: #f8fafc; line-height: 1.2; text-transform: uppercase; text-shadow: 0 2px 4px #000; margin-bottom: 6px; }
+        .reel-desc { font-size: 0.7rem; color: #cbd5e1; line-height: 1.3; font-weight: 500; text-transform: none; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-shadow: 0 1px 2px #000; }
+        
+        .flash-winner { animation: winFlash 0.15s 6 alternate ease-in-out; }
+        @keyframes winFlash { 0% { background: transparent; transform: scale(1); } 100% { background: rgba(16, 185, 129, 0.4); box-shadow: inset 0 0 20px #10b981; transform: scale(1.05); } }
+
+        /* FLOATING TEXT */
+        .floating-text { position: absolute; font-family: 'Fredoka One'; font-size: 1.4rem; color: #fff; text-shadow: 0 2px 6px rgba(0,0,0,0.8); animation: floatUp 1s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; z-index: 1000; pointer-events: none; white-space: nowrap; }
+        @keyframes floatUp { 0% { opacity: 0; transform: translate(-50%, 0) scale(0.5); } 15% { opacity: 1; transform: translate(-50%, -20px) scale(1.1); } 100% { opacity: 0; transform: translate(-50%, -60px) scale(0.9); } }
     </style>
 </head>
 <body>
-    <div id="vector-bg"></div>
-    <div id="vector-glow"></div>
+    <div id="premium-bg"></div>
 
-    <svg width="0" height="0" style="position:absolute; z-index: -1;">
-        <defs>
-            <radialGradient id="shadowGrad" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="rgba(0,0,0,0.8)"/><stop offset="50%" stop-color="rgba(0,0,0,0.5)"/><stop offset="100%" stop-color="rgba(0,0,0,0)"/>
-            </radialGradient>
-            <radialGradient id="sphereDark" cx="30%" cy="30%" r="70%">
-                <stop offset="0%" stop-color="rgba(255,255,255,0.4)"/><stop offset="40%" stop-color="rgba(0,0,0,0)"/><stop offset="85%" stop-color="rgba(0,0,0,0.5)"/><stop offset="100%" stop-color="rgba(0,0,0,0.8)"/>
-            </radialGradient>
-            <radialGradient id="sphereLight" cx="35%" cy="25%" r="45%">
-                <stop offset="0%" stop-color="rgba(255,255,255,0.95)"/><stop offset="30%" stop-color="rgba(255,255,255,0.4)"/><stop offset="100%" stop-color="rgba(255,255,255,0)"/>
-            </radialGradient>
-            <radialGradient id="sphereReflect" cx="50%" cy="85%" r="40%">
-                <stop offset="0%" stop-color="rgba(255,255,255,0.3)"/><stop offset="100%" stop-color="rgba(255,255,255,0)"/>
-            </radialGradient>
+    <div class="logo-wrapper">
+        <div class="logo-front">SZÍNÖZÖN</div>
+    </div>
 
-            <linearGradient id="title-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="#38bdf8"/>
-                <stop offset="50%" stop-color="#a855f7"/>
-                <stop offset="100%" stop-color="#f43f5e"/>
-            </linearGradient>
-            
-            <!-- ALAP GOLYÓ -->
-            <symbol id="ball-symbol" viewBox="0 0 120 120">
-                <ellipse cx="60" cy="105" rx="40" ry="12" fill="url(#shadowGrad)" />
-                <circle cx="60" cy="55" r="48" fill="var(--ball-color, #ccc)" />
-                <circle cx="60" cy="55" r="48" fill="url(#sphereDark)" />
-                <circle cx="60" cy="55" r="48" fill="url(#sphereReflect)" />
-                <ellipse cx="40" cy="30" rx="20" ry="12" transform="rotate(-30 40 30)" fill="url(#sphereLight)" />
-            </symbol>
-            
-            <!-- BOMBA -->
-            <symbol id="bomb-symbol" viewBox="0 0 120 120">
-                <ellipse cx="60" cy="105" rx="40" ry="12" fill="url(#shadowGrad)" />
-                <circle cx="60" cy="55" r="48" fill="#222" />
-                <circle cx="60" cy="55" r="48" fill="url(#sphereDark)" />
-                <path d="M53.5,36.5 C53.5,33.5 56,31 59,31 L61,31 C64,31 66.5,33.5 66.5,36.5 L66.5,38.5 C69.5,38.5 72,41 72,44 L72,59 C72,64.5 67.5,69 62,69 L58,69 C52.5,69 48,64.5 48,59 L48,44 C48,41 50.5,38.5 53.5,38.5 L53.5,36.5 Z M80,34.7 C82.5,32.5 83.6,30.3 83.6,28 C83.6,26 82.5,23.8 80.3,21.6" stroke="#f43f5e" stroke-width="7" stroke-linecap="round" fill="none" transform="translate(-10, -5)"/>
-                <circle cx="60" cy="55" r="48" fill="url(#sphereReflect)" />
-                <ellipse cx="40" cy="30" rx="20" ry="12" transform="rotate(-30 40 30)" fill="url(#sphereLight)" />
-            </symbol>
-            
-            <!-- LÉZER BOMBA -->
-            <symbol id="crossbomb-symbol" viewBox="0 0 120 120">
-                <ellipse cx="60" cy="105" rx="40" ry="12" fill="url(#shadowGrad)" />
-                <circle cx="60" cy="55" r="48" fill="#111" />
-                <circle cx="60" cy="55" r="48" fill="url(#sphereDark)" />
-                <path d="M60 20 L70 50 L100 55 L70 60 L60 90 L50 60 L20 55 L50 50 Z" fill="#0ff"/>
-                <circle cx="60" cy="55" r="48" fill="url(#sphereReflect)" />
-                <ellipse cx="40" cy="30" rx="20" ry="12" transform="rotate(-30 40 30)" fill="url(#sphereLight)" />
-            </symbol>
-
-            <!-- KAMÉLEON -->
-            <symbol id="chameleon-symbol" viewBox="0 0 120 120">
-                <defs>
-                    <conicGradient id="cg" cx="50%" cy="50%" angle="0deg">
-                        <stop offset="0%" stop-color="#f43f5e"/><stop offset="16%" stop-color="#f97316"/>
-                        <stop offset="33%" stop-color="#facc15"/><stop offset="50%" stop-color="#10b981"/>
-                        <stop offset="66%" stop-color="#3b82f6"/><stop offset="83%" stop-color="#a855f7"/>
-                        <stop offset="100%" stop-color="#f43f5e"/>
-                    </conicGradient>
-                </defs>
-                <ellipse cx="60" cy="105" rx="40" ry="12" fill="url(#shadowGrad)" />
-                <circle cx="60" cy="55" r="48" fill="url(#cg)" />
-                <circle cx="60" cy="55" r="48" fill="url(#sphereDark)" />
-                <circle cx="60" cy="55" r="48" fill="url(#sphereReflect)" />
-                <ellipse cx="40" cy="30" rx="20" ry="12" transform="rotate(-30 40 30)" fill="url(#sphereLight)" />
-            </symbol>
-            
-            <!-- KŐ -->
-            <symbol id="stone-symbol" viewBox="0 0 120 120">
-                <ellipse cx="60" cy="105" rx="45" ry="15" fill="url(#shadowGrad)" />
-                <path d="M55 15 L95 30 L105 75 L70 105 L25 95 L15 50 Z" fill="#222" stroke="#444" stroke-width="5" stroke-linejoin="round"/>
-                <path d="M35 45 L55 25 M80 90 L95 60" stroke="rgba(255,255,255,0.1)" stroke-width="8" stroke-linecap="round"/>
-            </symbol>
-
-            <!-- VÍRUS -->
-            <symbol id="virus-symbol" viewBox="0 0 120 120">
-                <ellipse cx="60" cy="105" rx="40" ry="12" fill="url(#shadowGrad)" />
-                <circle cx="60" cy="55" r="45" fill="#166534" />
-                <circle cx="60" cy="55" r="45" fill="url(#sphereDark)" />
-                <path d="M40 25 Q 60 15 80 25 Q 100 45 90 65 Q 80 95 60 85 Q 30 95 25 65 Q 15 45 40 25 Z" fill="#4ade80" opacity="0.6"/>
-                <circle cx="45" cy="40" r="8" fill="#bef264"/><circle cx="75" cy="50" r="5" fill="#bef264"/><circle cx="55" cy="70" r="10" fill="#bef264"/>
-                <ellipse cx="40" cy="30" rx="15" ry="10" transform="rotate(-30 40 30)" fill="url(#sphereLight)" />
-            </symbol>
-
-            <!-- IDŐZÍTETT BOMBA -->
-            <symbol id="timebomb-symbol" viewBox="0 0 120 120">
-                <ellipse cx="60" cy="105" rx="40" ry="12" fill="url(#shadowGrad)" />
-                <circle cx="60" cy="55" r="48" fill="var(--ball-color, #ccc)" />
-                <circle cx="60" cy="55" r="48" fill="url(#sphereDark)" />
-                <circle cx="60" cy="55" r="48" fill="url(#sphereReflect)" />
-                <ellipse cx="40" cy="30" rx="20" ry="12" transform="rotate(-30 40 30)" fill="url(#sphereLight)" />
-                <circle cx="60" cy="55" r="48" stroke="#ef4444" stroke-width="5" stroke-dasharray="15 5" fill="none" />
-            </symbol>
-
-            <!-- JÉG OVERLAY -->
-            <symbol id="ice-overlay" viewBox="0 0 120 120">
-                <path d="M20 25 L40 10 L90 20 L105 45 L95 85 L60 100 L25 90 L15 55 Z" fill="rgba(6, 182, 212, 0.4)" stroke="#67e8f9" stroke-width="4"/>
-                <path d="M30 25 L50 45 M90 35 L70 65 M40 85 L60 55" stroke="#cffafe" stroke-width="5" stroke-linecap="round" opacity="0.9"/>
-            </symbol>
-
-            <!-- ÜVEGFAL -->
-            <symbol id="wall-floor" viewBox="0 0 100 100">
-                <rect x="5" y="5" width="90" height="90" rx="8" fill="rgba(56, 189, 248, 0.15)" stroke="rgba(56, 189, 248, 0.6)" stroke-width="3"/>
-                <path d="M10 30 L40 50 M60 20 L50 50 M50 50 L80 80 M50 50 L30 90 M70 10 L90 40" stroke="rgba(255,255,255,0.4)" stroke-width="2" stroke-linecap="round"/>
-                <circle cx="50" cy="50" r="45" fill="url(#sphereLight)" opacity="0.3"/>
-            </symbol>
-        </defs>
-    </svg>
-
-    <header class="page-header">
-        <svg viewBox="0 0 500 80" xmlns="http://www.w3.org/2000/svg">
-            <path d="M 60 40 L 90 40 L 110 20 L 130 20" fill="none" stroke="#38bdf8" stroke-width="3" opacity="0.6" stroke-linecap="round" />
-            <path d="M 440 40 L 410 40 L 390 60 L 370 60" fill="none" stroke="#f43f5e" stroke-width="3" opacity="0.6" stroke-linecap="round" />
-            <text x="50%" y="60" font-family="'Fredoka One', cursive" font-size="55" fill="url(#title-grad)" text-anchor="middle" stroke="#ffffff" stroke-width="1.5" letter-spacing="4" filter="drop-shadow(0px 3px 5px rgba(0,0,0,0.8))">SZÍNÖZÖN</text>
-        </svg>
-    </header>
-
-    <main class="game-layout">
-        <div id="game-board-container">
-            <div id="game-board"></div>
-            <div id="level-announcer">SZINT 1</div>
+    <!-- PRÉMIUM BEJELENTKEZÉS -->
+    <div id="login-screen" class="overlay visible">
+        <div class="login-anim-bg" id="login-anim-bg"></div>
+        <div class="login-modal">
+            <div class="login-logo-title">SZÍNÖZÖN</div>
+            <p style="color:#94a3b8; font-weight:500; margin-bottom: 20px; font-size: 1.1rem;">Lépj be és válj legendává!</p>
+            <input type="text" id="name-input" class="login-input" placeholder="Írd be a neved..." maxlength="12">
+            <div id="leaderboard" class="leaderboard-cool"><div style="padding:20px; color:#64748b; font-size:0.9rem;">Ranglista betöltése...</div></div>
+            <button id="start-btn" class="btn btn-primary" style="width: 100%; padding: 18px; font-size: 1.2rem; border-radius: 14px;">JÁTÉK INDÍTÁSA</button>
         </div>
-        
-        <div class="game-ui-panel">
-             <div class="level-badge" id="ui-level-badge">Szint: 1</div>
-             
-             <!-- CÉL: PONTSZÁM -->
-             <div class="ui-box">
-                <div class="ui-box row" style="margin-bottom: 2px;">
-                    <h2>Pontszám Cél</h2>
-                    <span id="combo-counter" style="color: #facc15; font-weight: 900; font-size: 1.1em; text-shadow: 0 2px 5px #000;"></span>
-                </div>
-                <div class="goal-container">
-                    <div id="goal-bar-fill"></div>
-                    <div class="goal-text"><span id="score">0</span> &nbsp;/&nbsp; <span id="goal-score">1000</span></div>
-                </div>
-             </div>
+    </div>
 
-             <!-- CÉL: ÜVEGFALAK (FALTÖRÉS) -->
-             <div class="ui-box">
-                <div class="ui-box row" style="margin-bottom: 2px;">
-                    <h2>Üvegfalak (<span id="wall-count-total">0</span>)</h2>
-                </div>
-                <div class="goal-container" style="border-color: #0c4a6e;">
-                    <div id="wall-bar-fill"></div>
-                    <div class="goal-text"><span id="walls-broken">0</span> &nbsp;/&nbsp; <span id="walls-total">0</span> feltörve</div>
-                </div>
-             </div>
-             
-             <div class="ui-box row" style="padding: 10px; border-radius: 8px;">
-                <h2>Érkezik (<span id="balls-per-turn-ui">3</span>)</h2>
-                <div id="next-balls-preview"></div>
-             </div>
-             
-             <div class="ui-box">
-                <h2>Bomba Képesség</h2>
-                <div class="ability-bar-container"><div id="ability-bar-fill"></div></div>
-                <button id="color-bomb-button" class="ui-button primary" disabled style="margin-top: 5px;">
-                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                    Aktiválás (<span id="color-bomb-count">0</span>)
+    <!-- SORSOLÁS ABLAK -->
+    <div id="roulette-screen" class="overlay">
+        <div class="roulette-modal">
+            <h2 style="font-family:'Fredoka One'; color: #38bdf8; font-size: 2.2rem; margin: 0 0 15px 0; text-transform: uppercase; filter: drop-shadow(0 2px 10px rgba(56,189,248,0.5));">Új Küldetések!</h2>
+            <p style="color:#94a3b8; margin-bottom: 20px;">Állítsd meg a gépet az új feladatok kisorsolásához!</p>
+            <div class="reels-container" id="reels-container">
+                <!-- JS generálja ide a 4 sávot -->
+            </div>
+            <button id="btn-stop-roulette" class="btn btn-primary" style="width: 100%; padding: 18px; font-size: 1.3rem; animation: pulseTimer 1s infinite alternate;">🛑 SORSOLÁS MEGÁLLÍTÁSA</button>
+            <button id="btn-start-next-level" class="btn" style="background:#10b981; border-color:#047857; width: 100%; padding: 18px; font-size: 1.2rem; display:none; box-shadow: 0 4px 15px rgba(16,185,129,0.4);">🚀 TOVÁBB A PÁLYÁRA</button>
+        </div>
+    </div>
+
+    <!-- SZINT LÉPÉS ABLAK -->
+    <div id="level-up-screen" class="overlay">
+        <div class="modal" style="border-top: 4px solid #10b981;">
+            <h2 id="level-up-title" style="font-family:'Fredoka One'; color: #10b981; font-size: 2.4rem; margin: 0 0 10px 0;">SZÉP VOLT!</h2>
+            <p id="level-up-desc" style="color:#cbd5e1; margin-bottom: 25px; font-size: 1.1rem; font-weight:500;">Teljesítetted a szint összes küldetését!</p>
+            <button id="btn-next-level" class="btn btn-primary" style="background:#10b981; width: 100%; padding: 16px; font-size: 1.1rem;">KÖVETKEZŐ SZINT</button>
+        </div>
+    </div>
+
+    <!-- 1000. SZINT BAJNOKI KÉPERNYŐ -->
+    <div id="champion-screen" class="overlay">
+        <div class="modal" style="border-top: 4px solid #facc15; box-shadow: 0 0 80px rgba(250, 204, 21, 0.4);">
+            <h2 style="font-family:'Fredoka One'; color: #facc15; font-size: 2.8rem; margin: 0 0 10px 0;">LEGENDA VAGY!</h2>
+            <p style="color:#cbd5e1; margin-bottom: 15px; font-size: 1.2rem; font-weight:600;">Elérted az 1000. szintet!</p>
+            <p style="color:#94a3b8; font-size: 0.95rem; margin-bottom: 25px;">Ezt csak a legkitartóbb mesterek tudják megcsinálni. Gratulálunk a Bajnoknak!</p>
+            <div style="font-size: 5rem; margin-bottom: 25px; animation: diamondPulse 2s infinite alternate;">👑</div>
+            <button onclick="location.reload()" class="btn btn-primary" style="background:#facc15; color:#000; width: 100%; padding: 18px; font-size: 1.2rem;">ÚJRA KEZDEM</button>
+        </div>
+    </div>
+
+    <!-- GAME OVER ABLAK -->
+    <div id="game-over-screen" class="overlay">
+        <div class="modal" style="border-top: 4px solid var(--accent);">
+            <h2 style="font-family:'Fredoka One'; color: var(--accent); font-size: 2.4rem; margin: 0 0 10px 0;">NINCS HELY!</h2>
+            <p id="game-over-text" style="color:#94a3b8; margin-bottom: 25px; line-height:1.5;">A tábla megtelt, nem tudsz lépni.</p>
+            <div id="revive-section">
+                <button id="btn-revive" class="btn btn-primary" style="margin-bottom:12px; width:100%; padding: 16px;">MEGMENTÉS (-2 VISSZA)</button>
+            </div>
+            <button id="btn-restart" class="btn" style="width: 100%; padding: 14px;">PÁLYA ÚJRAKEZDÉSE</button>
+        </div>
+    </div>
+
+    <main class="main-layout" id="game-ui" style="display:none;">
+        <div class="board-container" id="board-container">
+            <div id="board"></div>
+            <svg id="path-svg" preserveAspectRatio="none"></svg>
+        </div>
+
+        <div class="sidebar">
+            <div class="stat-card" style="padding: 12px;">
+                <div class="stat-label">AKTUÁLIS SZINT</div>
+                <div id="lvl-val" class="stat-value" style="color:#38bdf8; font-size: 1.8rem; margin-top:0;">1</div>
+            </div>
+
+            <div id="objectives-container"></div>
+
+            <div class="stat-card" style="border-left-color: #facc15;">
+                <div class="stat-label">KÖVETKEZŐ GOLYÓK</div>
+                <div id="next-preview" style="display:flex; gap:12px; margin-top:8px; justify-content:center; height: 35px;"></div>
+            </div>
+
+            <div class="btn-grid">
+                <button class="btn btn-action" id="btn-freeze" disabled title="Gyűjts Időszikrákat (⚡) a golyó áthúzásával a feltöltéshez!">
+                    <span style="font-size: 1.2rem;">⏱️</span> IDŐSTOP (<span id="freeze-charge">0</span>%)
+                </button>
+                <button class="btn" onclick="undoMove()">
+                    <span style="font-size: 1.2rem;">↩️</span> VISSZA (<span id="undo-count">3</span>)
                 </button>
             </div>
-
-            <div style="display: flex; gap: 10px;">
-                <button id="undo-button" class="ui-button"><svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg> (<span id="undo-count">3</span>)</button>
-                <button id="menu-button" class="ui-button" style="background: #333;">Menü</button>
-            </div>
+            
+            <button class="btn" style="width: 100%; padding:12px; font-size:0.8rem;" onclick="location.reload()">KILÉPÉS / RANGLISTA</button>
         </div>
     </main>
 
-    <!-- FŐMENÜ -->
-    <div id="main-menu-screen" class="overlay visible">
-        <div class="overlay-card">
-            <div class="menu-logo-container">
-                <svg viewBox="0 0 500 150" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: 100%; transform: rotate(-3deg); filter: drop-shadow(0 10px 15px rgba(0,0,0,0.8));">
-                    <polygon points="120,40 140,50 140,70 120,80 100,70 100,50" fill="none" stroke="#f43f5e" stroke-width="4" opacity="0.8"/>
-                    <polygon points="380,90 395,100 395,120 380,130 365,120 365,100" fill="none" stroke="#38bdf8" stroke-width="4" opacity="0.8"/>
-                    <text x="50%" y="100" font-family="'Fredoka One', cursive" font-size="75" fill="url(#title-grad)" text-anchor="middle" stroke="#fff" stroke-width="2" letter-spacing="3">SZÍNÖZÖN</text>
-                </svg>
-            </div>
-            
-            <p style="color: var(--color-text-secondary); font-size: 1.1em; line-height: 1.5; margin: 0;">
-                Köss össze 5 azonos golyót, és <strong>törd fel az összes üvegfalat</strong> a győzelemhez! Pörgős, taktikus és színes.
-            </p>
-            <button id="btn-continue" class="ui-button primary" style="font-size: 1.4em; padding: 20px;">Folytatás (Szint: <span id="menu-current-level">1</span>)</button>
-            <button id="btn-new-game" class="ui-button" style="background: #222;">Új Kampány</button>
-            <button onclick="alert('SZABÁLYOK:\n- CLUSTER POP: Érintkezik 5 azonos golyó, felrobban!\n- ÜVEGFALAK: Csak akkor törik fel, ha rajta (vagy mellette) robbantasz fel egy alakzatot. A győzelemhez mindet fel kell törni!\n- VÍRUS: Terjed. Robbants mellette!\n- IDŐZÍTETT BOMBA: 0-nál kővé válik!\n- MEGA POP: 8+ golyó = lézer +1 Vissza gomb!')" style="background:none; border:none; color:#aaa; text-decoration:underline; cursor:pointer; font-size:0.9em; margin-top:5px;">Szabályok</button>
-        </div>
-    </div>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, query, orderBy, getDocs, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    <!-- PÁLYA TELJESÍTVE -->
-    <div id="level-complete-screen" class="overlay">
-        <div class="overlay-card">
-            <h1 class="overlay-title title-win">ZSENIÁLIS!</h1>
-            <p style="font-size: 1.2em; color: var(--color-text-secondary);">Pontszám elérve, falak feltörve!</p>
-            <div style="font-size: 3em; font-weight: 900; margin: 5px 0;">Pont: <span id="win-score" style="color: var(--color-success)">0</span></div>
-            <button id="btn-next-level" class="ui-button primary" style="font-size: 1.4em; padding: 20px;">Következő Szint</button>
-        </div>
-    </div>
+        const firebaseConfig = { apiKey: "AIzaSyAMY9G3qlnRpcccygaTmrt47rkJbI6YNuA", authDomain: "szinozon-48529.firebaseapp.com", projectId: "szinozon-48529" };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
 
-    <!-- GAME OVER -->
-    <div id="game-over-screen" class="overlay">
-        <div class="overlay-card">
-            <h1 class="overlay-title title-lose">MEGTELT!</h1>
-            <p style="font-size: 1.2em; color: var(--color-text-secondary);" id="lose-reason-text">A tábla megtelt, vagy a vírus győzött.</p>
-            <div style="font-size: 1.2em; font-weight: bold; margin: 5px 0; color: #facc15;">Pont hiányzott: <span id="lose-missing-score">0</span><br>Falak maradtak: <span id="lose-missing-walls">0</span></div>
-            <button id="btn-retry-level" class="ui-button primary" style="font-size: 1.4em; padding: 20px;">Újrapróbálom</button>
-            <button id="btn-menu-from-lose" class="ui-button">Főmenü</button>
-        </div>
-    </div>
+        const COLORS = { red:['#fb7185', '#be123c'], green:['#34d399', '#047857'], blue:['#60a5fa', '#1d4ed8'], yellow:['#fde047', '#a16207'], purple:['#c084fc', '#7e22ce'], cyan:['#22d3ee', '#0e7490'], pink:['#f472b6', '#be185d'] };
+        const COLOR_NAMES = { red: 'Piros', green: 'Zöld', blue: 'Kék', yellow: 'Sárga', purple: 'Lila', cyan: 'Cián', pink: 'Rózsa' };
+        const COLOR_KEYS = Object.keys(COLORS);
 
-    <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const CSS_COLORS = {
-            'green': '#10b981', 'purple': '#a855f7', 'orange': '#f97316', 'yellow': '#facc15',
-            'magenta': '#ec4899', 'blue': '#3b82f6', 'red': '#ef4444', 'cyan': '#06b6d4'
-        };
-        const ALL_COLORS = Object.keys(CSS_COLORS);
+        // --- 50 FRAPPÁNS, DÍCSÉRŐ ÜZENET ---
+        const LEVEL_UP_TITLES =["SZÉP VOLT!", "ZSENIÁLIS!", "LENYŰGÖZŐ!", "MEGÁLLÍTHATATLAN!", "MESTERMUNKA!", "BRILIÁNS!", "KIVÁLÓ!", "HIHETETLEN!"];
+        const LEVEL_UP_MESSAGES =[
+            "Fantasztikus munka, csak így tovább!", "Képtelenség téged megállítani!", "Micsoda zseniális elme!", "Újabb szint, újabb győzelem!",
+            "A reflexeid lenyűgözőek, igazi bajnok vagy!", "Mesteri láncreakciókat csinálsz!", "Úgy tolod, mintha profi lennél!",
+            "Készülj fel, a következő pálya izzadni fog tőled!", "A tábla retteg, ha te lépsz rá!", "Ezt még egy szuperszámítógép is megirigyelné!",
+            "Elegáns, gyors és pusztító!", "Ez az! Mutasd meg nekik, ki itt a főnök!", "Kezded igazán érezni az energiát!",
+            "Tökéletes logika, hibátlan kivitelezés!", "Egyre jobban belejössz, lassan legenda leszel!", "A robbanások is ritmusra ugrálnak neked!",
+            "Megtisztítottad a terepet, mehetünk tovább!", "A színek ura/úrnője vagy!", "Lélegzetelállító kombókat raktál össze!",
+            "A gravitáció és a logika meghajolt előtted!", "Még a gép is tapsol a háttérben!", "Így kell ezt csinálni! Nincs megállás!",
+            "A győzelem illata a levegőben van!", "A taktikád egyszerűen kikezdhetetlen!", "Egy igazi stratéga veszett el benned!",
+            "Elképesztő! A golyók maguktól menekülnek!", "Olyan gyors voltál, hogy pislogni sem tudtunk!", "Minden mozdulatod maga a költészet!",
+            "Ezzel a teljesítménnyel történelmet írsz!", "Nincs olyan küldetés, amit ne tudnál megoldani!", "A zsenialitás határait súrolod!",
+            "Ezt nevezem én professzionális játéknak!", "Zsebre vágtad ezt a pályát is!", "A színek engedelmeskednek az akaratodnak!",
+            "Ez a te napod, semmi sem állíthat meg!", "Hibátlan mérnöki munka volt a pályán!", "Olyan vagy, mint egy igazi varázsló!",
+            "Mindent letaroltál, jöhet a következő kihívás!", "A tábla kiürült, az elméd viszont élesebb, mint valaha!",
+            "Láttad azokat a robbanásokat? Hatalmas volt!", "Egyszerűen letisztult, profi munka!", "Sorra döntöd a saját rekordjaidat!",
+            "Erre szavakat is nehéz találni... Gratulálok!", "Mint kés a vajban, úgy mentél át ezen a szinten!", "Kőkemény fókusz, maximális eredmény!",
+            "Ez nem szerencse, ez tiszta tudás!", "A következő pálya már remeg a félelemtől!", "Egy igazi pusztító gép vagy a jó értelemben!",
+            "Senki nem tudja ezt úgy csinálni, mint te!", "Hatalmas szintlépés, készülj a következő kalandra!"
+        ];
+
+        // --- HÁTTÉR ANIMÁCIÓ ---
+        function initLoginBackground() {
+            const bgContainer = document.getElementById('login-anim-bg');
+            if(!bgContainer) return;
+            const bgColors =['#ff2a55', '#10b981', '#3b82f6', '#facc15', '#d946ef', '#06b6d4'];
+            for(let i=0; i<25; i++) {
+                const b = document.createElement('div'); b.className = 'login-ball-bg';
+                const size = Math.random() * 80 + 30;
+                b.style.width = `${size}px`; b.style.height = `${size}px`;
+                b.style.left = `${Math.random() * 100}%`; b.style.top = `${Math.random() * 100}%`;
+                const c = bgColors[Math.floor(Math.random() * bgColors.length)];
+                b.style.background = `radial-gradient(circle at 30% 30%, ${c}, transparent)`;
+                b.style.animationDuration = `${Math.random() * 15 + 10}s`; b.style.animationDelay = `-${Math.random() * 20}s`;
+                b.style.setProperty('--tx', `${(Math.random() - 0.5) * 400}px`); b.style.setProperty('--ty', `${(Math.random() - 0.5) * 400}px`);
+                bgContainer.appendChild(b);
+            }
+        }
+        initLoginBackground();
+
+        // --- PRECIZ KÜLDETÉS DATABASE (ALAP + 30 ÚJ EXTRA KÜLDETÉS) ---
+        const TASK_DB =[];
+        let tId = 1;
         
+        const colorMinLvl = { red: 1, green: 1, blue: 1, yellow: 11, purple: 21, cyan: 31, pink: 41 };
+
+        COLOR_KEYS.forEach(c => {
+            let cLvl = colorMinLvl[c];
+            // Alap feladatok
+            TASK_DB.push({ id: `t${tId++}`, track: `c_${c}`, icon: '🔴', name: `${COLOR_NAMES[c]} Kezdő`, desc: `Robbants fel {X} db ${COLOR_NAMES[c]} golyót!`, baseTarget: 15, scale: 1.5, color: COLORS[c][0], minLvl: cLvl });
+            TASK_DB.push({ id: `t${tId++}`, track: `c_${c}`, icon: '☄️', name: `${COLOR_NAMES[c]} Mester`, desc: `Gyűjts össze {X} db ${COLOR_NAMES[c]} golyót a kombóiddal!`, baseTarget: 35, scale: 2.5, color: COLORS[c][0], minLvl: cLvl + 2 });
+            TASK_DB.push({ id: `t${tId++}`, track: `c_${c}`, icon: '👑', name: `${COLOR_NAMES[c]} Báró`, desc: `Söpörd le a tábláról a {X} db ${COLOR_NAMES[c]} golyót!`, baseTarget: 60, scale: 4, color: COLORS[c][0], minLvl: cLvl + 5 });
+            TASK_DB.push({ id: `t${tId++}`, track: `l_${c}`, icon: '🧨', name: `${COLOR_NAMES[c]} Sorkilövés`, desc: `Indíts {X} db sorkilövést ${COLOR_NAMES[c]} csíkos golyóval!`, baseTarget: 2, scale: 0.2, color: COLORS[c][0], minLvl: cLvl + 1 });
+        });
+        
+        // Eredeti speciális feladatok
+        TASK_DB.push(
+            { id: `t${tId++}`, track: 'bombs', icon: '💣', name: 'Pirotechnikus', desc: 'Aktiválj {X} db Bombát vagy Atomot (💣/☢️)!', baseTarget: 3, scale: 0.5, color: '#94a3b8', minLvl: 1 },
+            { id: `t${tId++}`, track: 'bombs', icon: '🌋', name: 'Robbantó', desc: 'Csinálj tömeges pusztítást {X} db Bombával!', baseTarget: 8, scale: 0.8, color: '#94a3b8', minLvl: 8 },
+            { id: `t${tId++}`, track: 'rainbows', icon: '🌈', name: 'Színvarázs', desc: 'Használj {X} db Szivárvány (🌈) golyót!', baseTarget: 2, scale: 0.3, color: '#d946ef', minLvl: 2 },
+            { id: `t${tId++}`, track: 'rainbows', icon: '✨', name: 'Szivárvány Harcos', desc: 'Köss össze golyókat {X} db Szivárvánnyal (🌈)!', baseTarget: 5, scale: 0.5, color: '#d946ef', minLvl: 10 },
+            { id: `t${tId++}`, track: 'diamonds', icon: '💎', name: 'Kincskereső', desc: 'Robbants fel {X} db Gyémánt (💎) cellát!', baseTarget: 3, scale: 0.4, color: '#facc15', minLvl: 1 },
+            { id: `t${tId++}`, track: 'diamonds', icon: '🏦', name: 'Gyémánt Tolvaj', desc: 'Szedj fel {X} db Gyémántot (💎) robbantással!', baseTarget: 8, scale: 0.6, color: '#facc15', minLvl: 6 },
+            { id: `t${tId++}`, track: 'sparks', icon: '⚡', name: 'Áramfejlesztő', desc: 'Húzz át golyót {X} db Időszikra (⚡) cellán!', baseTarget: 5, scale: 0.6, color: '#c084fc', minLvl: 1 },
+            { id: `t${tId++}`, track: 'sparks', icon: '🌩️', name: 'Viharisten', desc: 'Gyűjts be {X} db Időszikrát (⚡) menet közben!', baseTarget: 12, scale: 1, color: '#c084fc', minLvl: 5 },
+            { id: `t${tId++}`, track: 'combo6', icon: '🔥', name: 'Nagy Kombó', desc: 'Robbants fel legalább 6 golyót {X} alkalommal!', baseTarget: 3, scale: 0.3, color: '#fb7185', minLvl: 4 },
+            { id: `t${tId++}`, track: 'combo6', icon: '🎆', name: 'Mészáros', desc: 'Csinálj 6+ golyós láncreakciót {X} alkalommal!', baseTarget: 8, scale: 0.5, color: '#fb7185', minLvl: 12 },
+            { id: `t${tId++}`, track: 'combo7', icon: '💥', name: 'Brutális', desc: 'Érj el egy gigantikus (7+) robbanást {X} alkalommal!', baseTarget: 1, scale: 0.1, color: '#f43f5e', minLvl: 9 },
+            { id: `t${tId++}`, track: 'combo7', icon: '👹', name: 'Pusztító', desc: 'Söpörd le a pályát hatalmas (7+) kombóval {X} alkalommal!', baseTarget: 3, scale: 0.2, color: '#f43f5e', minLvl: 18 },
+            { id: `t${tId++}`, track: 'distance', icon: '🏃', name: 'Sétáló', desc: 'Mozgass golyókat {X} cellányi távolságra!', baseTarget: 30, scale: 3, color: '#34d399', minLvl: 1 },
+            { id: `t${tId++}`, track: 'distance', icon: '🚀', name: 'Maratonista', desc: 'Tégy meg {X} cellányi távolságot a golyókkal!', baseTarget: 100, scale: 6, color: '#34d399', minLvl: 6 },
+            { id: `t${tId++}`, track: 'freeze', icon: '⏱️', name: 'Időutazó', desc: 'Töltsd fel és aktiváld az Időstopot {X} alkalommal!', baseTarget: 2, scale: 0.2, color: '#22d3ee', minLvl: 2 },
+            { id: `t${tId++}`, track: 'freeze', icon: '⏳', name: 'Idő Ura', desc: 'Használd {X} alkalommal az Időstop (⏱️) funkciót!', baseTarget: 5, scale: 0.4, color: '#22d3ee', minLvl: 10 },
+            { id: `t${tId++}`, track: 'total', icon: '🧹', name: 'Takarító', desc: 'Semmisíts meg {X} db golyót összesen!', baseTarget: 50, scale: 5, color: '#cbd5e1', minLvl: 1 },
+            { id: `t${tId++}`, track: 'total', icon: '🌪️', name: 'Meteor Zápor', desc: 'Pusztíts el {X} db golyót a táblán!', baseTarget: 150, scale: 10, color: '#cbd5e1', minLvl: 11 },
+            { id: `t${tId++}`, track: 'lines_h', icon: '➖', name: 'Vízszintes Vágás', desc: 'Hozz létre vízszintes (➖) sorkilövést {X} alkalommal!', baseTarget: 2, scale: 0.2, color: '#38bdf8', minLvl: 3 },
+            { id: `t${tId++}`, track: 'lines_v', icon: '⏐', name: 'Függőleges Vágás', desc: 'Hozz létre függőleges (⏐) sorkilövést {X} alkalommal!', baseTarget: 2, scale: 0.2, color: '#38bdf8', minLvl: 3 },
+            { id: `t${tId++}`, track: 'lines_h', icon: '⚔️', name: 'Vízszintes Mester', desc: 'Pusztíts vízszintes (➖) sorkilövőkkel {X} alkalommal!', baseTarget: 5, scale: 0.4, color: '#38bdf8', minLvl: 8 },
+            { id: `t${tId++}`, track: 'lines_v', icon: '⚔️', name: 'Függőleges Mester', desc: 'Pusztíts függőleges (⏐) sorkilövőkkel {X} alkalommal!', baseTarget: 5, scale: 0.4, color: '#38bdf8', minLvl: 8 }
+        );
+
+        // --- 30 ÚJ EXTRA KÜLDETÉS (Új nevek, nagyobb kihívások) ---
+        TASK_DB.push(
+            { id: `t${tId++}`, track: 'diamonds', icon: '💍', name: 'Ékszerész', desc: 'Szerezz meg {X} db ragyogó Gyémántot (💎)!', baseTarget: 15, scale: 0.8, color: '#facc15', minLvl: 12 },
+            { id: `t${tId++}`, track: 'diamonds', icon: '💰', name: 'Milliárdos', desc: 'Halmozz fel {X} db Gyémántot (💎) a kincstáradba!', baseTarget: 25, scale: 1.0, color: '#facc15', minLvl: 25 },
+            { id: `t${tId++}`, track: 'bombs', icon: '🧨', name: 'Demoláló', desc: 'Robbants fel {X} db extra Bombát/Atomot a táblán!', baseTarget: 15, scale: 1.0, color: '#94a3b8', minLvl: 15 },
+            { id: `t${tId++}`, track: 'bombs', icon: '☣️', name: 'Apokalipszis', desc: 'Okozz totális pusztítást {X} db robbanószerrel!', baseTarget: 25, scale: 1.5, color: '#94a3b8', minLvl: 30 },
+            { id: `t${tId++}`, track: 'rainbows', icon: '🔮', name: 'Prizma Mester', desc: 'Olvaszd egybe a színeket {X} db Szivárvány golyóval!', baseTarget: 8, scale: 0.6, color: '#d946ef', minLvl: 18 },
+            { id: `t${tId++}`, track: 'rainbows', icon: '🌟', name: 'Fényhozó', desc: 'Világítsd meg a pályát {X} db Szivárvánnyal (🌈)!', baseTarget: 15, scale: 1.0, color: '#d946ef', minLvl: 35 },
+            { id: `t${tId++}`, track: 'sparks', icon: '🔌', name: 'Villámhárító', desc: 'Vezesd le az energiát {X} db Időszikra cellán át!', baseTarget: 20, scale: 1.2, color: '#c084fc', minLvl: 15 },
+            { id: `t${tId++}`, track: 'sparks', icon: '🧛', name: 'Energiavámpír', desc: 'Szívj el {X} db Időszikrát (⚡) a tábláról!', baseTarget: 35, scale: 2.0, color: '#c084fc', minLvl: 28 },
+            { id: `t${tId++}`, track: 'combo6', icon: '☢️', name: 'Láncreaktor', desc: 'Indíts el (6+) kombókat {X} alkalommal!', baseTarget: 15, scale: 0.8, color: '#fb7185', minLvl: 22 },
+            { id: `t${tId++}`, track: 'combo6', icon: '🎉', name: 'Tűzijáték', desc: 'Kápráztass el mindenkit {X} db nagy (6+) robbanással!', baseTarget: 25, scale: 1.2, color: '#fb7185', minLvl: 40 },
+            { id: `t${tId++}`, track: 'combo7', icon: '🌋', name: 'Katasztrófa', desc: 'Sújtsd a táblát óriási (7+) robbanással {X} alkalommal!', baseTarget: 8, scale: 0.4, color: '#f43f5e', minLvl: 30 },
+            { id: `t${tId++}`, track: 'combo7', icon: '🌍', name: 'Világvége', desc: 'Hozz el {X} db világrengető (7+) gigarobbanást!', baseTarget: 15, scale: 0.6, color: '#f43f5e', minLvl: 50 },
+            { id: `t${tId++}`, track: 'distance', icon: '🚶‍♂️', name: 'Vándor', desc: 'Tégy meg {X} cellányi utat a golyóiddal!', baseTarget: 200, scale: 10, color: '#34d399', minLvl: 15 },
+            { id: `t${tId++}`, track: 'distance', icon: '🛸', name: 'Fénysebesség', desc: 'Száguldj át {X} cellán a pálya hálózatában!', baseTarget: 500, scale: 20, color: '#34d399', minLvl: 35 },
+            { id: `t${tId++}`, track: 'freeze', icon: '🌀', name: 'Időhurok', desc: 'Fagyaszd be az időt {X} alkalommal!', baseTarget: 8, scale: 0.5, color: '#22d3ee', minLvl: 20 },
+            { id: `t${tId++}`, track: 'freeze', icon: '🌌', name: 'Kronos', desc: 'Legyél az Idő Ura és használj Időstopot {X} alkalommal!', baseTarget: 15, scale: 0.8, color: '#22d3ee', minLvl: 40 },
+            { id: `t${tId++}`, track: 'total', icon: '🧲', name: 'Megtisztulás', desc: 'Szippants be és tüntess el {X} db golyót összesen!', baseTarget: 300, scale: 15, color: '#cbd5e1', minLvl: 20 },
+            { id: `t${tId++}`, track: 'total', icon: '🕳️', name: 'Fekete Lyuk', desc: 'Nyeld el a tábla {X} db golyóját a semmibe!', baseTarget: 600, scale: 25, color: '#cbd5e1', minLvl: 45 },
+            { id: `t${tId++}`, track: 'lines_h', icon: '🌅', name: 'Horizont', desc: 'Használj vízszintes vágást {X} alkalommal!', baseTarget: 10, scale: 0.6, color: '#38bdf8', minLvl: 16 },
+            { id: `t${tId++}`, track: 'lines_h', icon: '🪓', name: 'Kettévágó', desc: 'Hasíts végig a táblán vízszintesen {X} alkalommal!', baseTarget: 20, scale: 1.0, color: '#38bdf8', minLvl: 32 },
+            { id: `t${tId++}`, track: 'lines_v', icon: '🌠', name: 'Égi Csapás', desc: 'Küldj le függőleges csapást {X} alkalommal!', baseTarget: 10, scale: 0.6, color: '#38bdf8', minLvl: 16 },
+            { id: `t${tId++}`, track: 'lines_v', icon: '🏛️', name: 'Oszloptörő', desc: 'Zúzz szét oszlopokat függőlegesen {X} alkalommal!', baseTarget: 20, scale: 1.0, color: '#38bdf8', minLvl: 32 },
+            
+            // Szín specifikus nagymesteri küldetések
+            { id: `t${tId++}`, track: 'c_red', icon: '🩸', name: 'Vérhold', desc: 'Áldozz fel {X} db Piros golyót az éjszakában!', baseTarget: 100, scale: 5.0, color: COLORS.red[0], minLvl: colorMinLvl.red + 10 },
+            { id: `t${tId++}`, track: 'c_blue', icon: '🌊', name: 'Cunami', desc: 'Moss el {X} db Kék golyót a pályáról!', baseTarget: 100, scale: 5.0, color: COLORS.blue[0], minLvl: colorMinLvl.blue + 10 },
+            { id: `t${tId++}`, track: 'c_green', icon: '🌴', name: 'Dzsungel', desc: 'Írts ki {X} db Zöld golyót az őserdőből!', baseTarget: 100, scale: 5.0, color: COLORS.green[0], minLvl: colorMinLvl.green + 10 },
+            { id: `t${tId++}`, track: 'c_yellow', icon: '☀️', name: 'Napkitörés', desc: 'Készíts {X} db Sárga golyó égető robbanást!', baseTarget: 100, scale: 5.0, color: COLORS.yellow[0], minLvl: colorMinLvl.yellow + 10 },
+            { id: `t${tId++}`, track: 'c_purple', icon: '🪐', name: 'Kozmosz', desc: 'Röptess az űrbe {X} db Lila golyót!', baseTarget: 100, scale: 5.0, color: COLORS.purple[0], minLvl: colorMinLvl.purple + 10 },
+            { id: `t${tId++}`, track: 'c_cyan', icon: '🧊', name: 'Jégkorszak', desc: 'Zúzz porrá {X} db Cián (jég) golyót!', baseTarget: 100, scale: 5.0, color: COLORS.cyan[0], minLvl: colorMinLvl.cyan + 10 },
+            { id: `t${tId++}`, track: 'c_pink', icon: '🌸', name: 'Cseresznyevirág', desc: 'Szórd szét {X} db Rózsaszín golyó szirmait!', baseTarget: 100, scale: 5.0, color: COLORS.pink[0], minLvl: colorMinLvl.pink + 10 },
+            { id: `t${tId++}`, track: 'total', icon: '💥', name: 'Galaxis Pusztító', desc: 'Érj el egy masszív, {X} db-os golyó pusztítást!', baseTarget: 1000, scale: 30, color: '#f43f5e', minLvl: 60 }
+        );
+
         let state = {
-            currentLevel: parseInt(localStorage.getItem('szinFormaLevel')) || 1,
-            score: 0, board:[], walls: new Set(), totalWalls: 0, 
-            selectedItem: null, nextItems:[], undoState: null,
-            isAnimating: false, comboCounter: 0, abilityCharge: 0, activeAbility: null,
-            earnedAbilities: {
-                colorBomb: parseInt(localStorage.getItem('szinFormaBombs')) || 0,
-                undo: parseInt(localStorage.getItem('szinFormaUndos')) || 3
-            },
-            config: {}, virusDestroyedThisTurn: false
+            name: "", level: 1, grid: 8, board:[], next:[], selected: null,
+            undos: 3, goldCells: new Set(), timeSparks: new Set(),
+            objectives: {}, taskPool:[], activeTasks:[],
+            isAnimating: false, history:[], freezeCharge: 0, timeStopUntil: 0,
+            lastMovedTo: null
         };
 
-        const DOM = {
-            board: document.getElementById('game-board'), boardContainer: document.getElementById('game-board-container'),
-            score: document.getElementById('score'), goalScore: document.getElementById('goal-score'), goalBarFill: document.getElementById('goal-bar-fill'),
-            wallsBroken: document.getElementById('walls-broken'), wallsTotal: document.getElementById('walls-total'), wallBarFill: document.getElementById('wall-bar-fill'), wallCountTotal: document.getElementById('wall-count-total'),
-            nextBalls: document.getElementById('next-balls-preview'), ballsPerTurnUI: document.getElementById('balls-per-turn-ui'),
-            undoButton: document.getElementById('undo-button'), undoCount: document.getElementById('undo-count'),
-            comboCounter: document.getElementById('combo-counter'), abilityBarFill: document.getElementById('ability-bar-fill'),
-            colorBombButton: document.getElementById('color-bomb-button'), colorBombCount: document.getElementById('color-bomb-count'),
-            levelBadge: document.getElementById('ui-level-badge'), levelAnnouncer: document.getElementById('level-announcer'),
-            pathOverlay: null, mainMenu: document.getElementById('main-menu-screen'), levelComplete: document.getElementById('level-complete-screen'), gameOver: document.getElementById('game-over-screen'),
-            btnContinue: document.getElementById('btn-continue'), btnNewGame: document.getElementById('btn-new-game'), btnNextLevel: document.getElementById('btn-next-level'), btnRetryLevel: document.getElementById('btn-retry-level'), btnMenu: document.getElementById('menu-button'), btnMenuFromLose: document.getElementById('btn-menu-from-lose'),
-            menuCurrentLevel: document.getElementById('menu-current-level')
+        // --- RANGLISTA ÉS INDÍTÁS ---
+        async function loadLB() {
+            try {
+                const q = query(collection(db, "players"), orderBy("level", "desc"), limit(20));
+                const snap = await getDocs(q);
+                const container = document.getElementById('leaderboard'); container.innerHTML = '';
+                let rank = 1;
+                snap.forEach(d => {
+                    let trophy = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
+                    const item = document.createElement('div'); item.className = `lb-item`;
+                    item.innerHTML = `<span style="color:#cbd5e1; display:flex; align-items:center;"><span style="color:#94a3b8; margin-right:8px; font-weight:800; font-size:1.1rem; width:25px; text-align:center;">${trophy}</span>${d.id}</span><span style="color:#38bdf8; font-family:'Fredoka One'; font-size:1.1rem;">Lvl ${d.data().level}</span>`;
+                    item.onclick = () => document.getElementById('name-input').value = d.id;
+                    container.appendChild(item);
+                    rank++;
+                });
+            } catch(e) { document.getElementById('leaderboard').innerHTML = '<div style="padding:10px; color:#475569;">Offline mód</div>'; }
+        }
+        loadLB();
+
+        document.getElementById('start-btn').onclick = async () => {
+            const name = document.getElementById('name-input').value.trim();
+            if(!name) return alert("Kérlek, add meg a neved!");
+            state.name = name;
+            try {
+                const docRef = doc(db, "players", name); const snap = await getDoc(docRef);
+                if(snap.exists()) {
+                    state.level = snap.data().level || 1;
+                    state.undos = Math.min(10, snap.data().undos !== undefined ? snap.data().undos : 3);
+                    state.taskPool = snap.data().taskPool ||[];
+                    state.activeTasks = snap.data().activeTasks ||[];
+                } else { await setDoc(docRef, { level: 1, undos: 3 }); }
+            } catch(e) { console.warn("Helyi mentés használata."); }
+            
+            document.getElementById('login-screen').classList.remove('visible');
+            
+            if(state.level >= 1000) { document.getElementById('champion-screen').classList.add('visible'); return; }
+            
+            let needsNewRoulette = false;
+            if(state.activeTasks.length === 0) needsNewRoulette = true;
+            else {
+                for (let tId of state.activeTasks) {
+                    let t = TASK_DB.find(x => x.id === tId);
+                    if (!t || t.minLvl > state.level) { needsNewRoulette = true; break; }
+                }
+            }
+
+            if(needsNewRoulette) {
+                state.activeTasks =[];
+                startRoulette();
+            } else { 
+                document.getElementById('game-ui').style.display = 'flex'; 
+                initLevel(); 
+            }
         };
 
-        function generateLevelConfig(level) {
-            let isBoss = (level % 10 === 0); let isMegaBoss = (level % 50 === 0);
+        // --- ROULETTE (SORSOLÁS) A 2 MARADÉK ÚJRATÖLTÉSSEL ---
+        function startRoulette() {
+            document.getElementById('game-ui').style.display = 'none';
+            document.getElementById('roulette-screen').classList.add('visible');
+            document.getElementById('btn-stop-roulette').style.display = 'block';
+            document.getElementById('btn-start-next-level').style.display = 'none';
             
-            let gridSize = 8 + (level % 5);
-            if (isBoss || isMegaBoss) gridSize = 12;
+            const numReels = Math.min(4, 1 + Math.floor((state.level - 1) / 15));
+            
+            state.taskPool = state.taskPool.filter(tId => {
+                let t = TASK_DB.find(x => x.id === tId);
+                return t && t.minLvl <= state.level;
+            });
 
-            let numColors = Math.min(8, 4 + Math.floor(level / 30));
+            // HA MÁR CSAK 2 VAGY KEVESEBB MARADT A GÉPBEN, VAGY NINCS ELÉG, AKKOR ÚJRATÖLTJÜK A TELJES BÁZIST
+            if(state.taskPool.length <= 2 || state.taskPool.length < numReels) {
+                state.taskPool = TASK_DB.filter(t => t.minLvl <= state.level).map(t => t.id);
+            }
             
-            let baseScore = 1500;
-            let levelMultiplier = (level * 1200);
-            let exponentialBoost = Math.pow(1.05, level);
-            let goalScore = Math.floor((baseScore + levelMultiplier) * exponentialBoost);
+            state.activeTasks =[];
+            for(let i=0; i<numReels; i++) {
+                let rIdx = Math.floor(Math.random() * state.taskPool.length);
+                state.activeTasks.push(state.taskPool.splice(rIdx, 1)[0]);
+            }
             
-            if (isBoss) goalScore = Math.floor(goalScore * 1.5);
-            if (isMegaBoss) goalScore = Math.floor(goalScore * 2);
+            const container = document.getElementById('reels-container');
+            container.innerHTML = '';
             
-            let wallCount = Math.floor(level * 1.5) + (isBoss ? 5 : 0);
-            wallCount = Math.min(wallCount, Math.floor((gridSize * gridSize) * 0.6));
-            if (level === 1) wallCount = 3;
-            
-            let ballsPerTurn = (level > 100) ? 4 : 3;
-            if (isMegaBoss) ballsPerTurn = 5;
+            let validTasks = TASK_DB.filter(t => t.minLvl <= state.level);
 
-            let virusChance = level > 10 ? Math.min(0.05, 0.01 + (level * 0.0002)) : 0;
-            let timeBombChance = level > 20 ? Math.min(0.08, 0.02 + (level * 0.0002)) : 0;
-            let goldCellCount = level > 5 ? 1 + Math.floor(Math.random() * 3) : 0;
-            let bombChance = Math.min(0.08, 0.04 + (level * 0.0001));
-            let chameleonChance = Math.min(0.05, 0.02 + (level * 0.0001));
-            let crossBombChance = level >= 15 ? Math.min(0.05, 0.01 + (level * 0.0001)) : 0;
+            for(let i=0; i<numReels; i++) {
+                const reelWrap = document.createElement('div'); reelWrap.className = 'reel-col';
+                const reel = document.createElement('div'); reel.className = 'reel-strip';
+                
+                let html = '';
+                for(let j=0; j<30; j++) html += createReelCard(validTasks[Math.floor(Math.random()*validTasks.length)], false, state.level);
+                
+                const winningTask = TASK_DB.find(t => t.id === state.activeTasks[i]);
+                html += createReelCard(winningTask, true, state.level);
+                
+                for(let j=0; j<5; j++) html += createReelCard(validTasks[0], false, state.level);
+                
+                reel.innerHTML = html;
+                reelWrap.appendChild(reel); container.appendChild(reelWrap);
+                
+                reel.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(-6000px)' }], { duration: 800, iterations: Infinity });
+            }
+        }
 
-            return {
-                LEVEL: level, IS_BOSS: isBoss, IS_MEGA: isMegaBoss, GRID_SIZE: gridSize, COLORS: ALL_COLORS.slice(0, numColors),
-                MIN_CLUSTER: 5, BALLS_PER_TURN: ballsPerTurn, INITIAL_BALLS: 5 + Math.floor(gridSize/2),
-                INITIAL_STONES: isBoss ? 5 : Math.floor(Math.random() * 3), INITIAL_VIRUS: (level > 15 && Math.random() > 0.5) ? 1 : 0,
-                GOLD_CELLS_COUNT: goldCellCount, GOAL_SCORE: Math.ceil(goalScore / 100) * 100, WALL_COUNT: wallCount,
-                BOMB_CHANCE: bombChance, CROSSBOMB_CHANCE: crossBombChance, CHAMELEON_CHANCE: chameleonChance,
-                VIRUS_CHANCE: virusChance, TIMEBOMB_CHANCE: timeBombChance, ABILITY_CHARGE_PER_BALL: 6, ABILITY_CHARGE_GOAL: 250
+        function createReelCard(task, isWinner = false, level = 1) {
+            let target = Math.floor(task.baseTarget * (1 + ((level-1) * task.scale * 0.1)));
+            let desc = task.desc.replace('{X}', target);
+            return `
+                <div class="reel-card ${isWinner ? 'winner-card' : ''}">
+                    <div class="reel-icon">${task.icon}</div>
+                    <div class="reel-title" style="color:${task.color}">${task.name}</div>
+                    <div class="reel-desc">${desc}</div>
+                </div>
+            `;
+        }
+
+        document.getElementById('btn-stop-roulette').onclick = () => {
+            document.getElementById('btn-stop-roulette').style.display = 'none';
+            const strips = document.querySelectorAll('.reel-strip');
+            let maxDelay = 0;
+            
+            strips.forEach((reel) => {
+                reel.getAnimations().forEach(a => a.cancel());
+                const targetY = 30 * 200; 
+                
+                const duration = 5000 + (Math.random() * 10000);
+                if(duration > maxDelay) maxDelay = duration;
+                
+                reel.style.transition = `transform ${duration}ms cubic-bezier(0.1, 0.85, 0.2, 1)`;
+                setTimeout(() => { reel.style.transform = `translateY(-${targetY}px)`; }, 50);
+                
+                setTimeout(() => {
+                    const winnerCard = reel.querySelector('.winner-card');
+                    if(winnerCard) winnerCard.classList.add('flash-winner');
+                }, duration);
+            });
+            
+            setTimeout(() => { document.getElementById('btn-start-next-level').style.display = 'block'; }, maxDelay + 1000);
+        };
+
+        document.getElementById('btn-start-next-level').onclick = () => {
+            document.getElementById('roulette-screen').classList.remove('visible');
+            document.getElementById('game-ui').style.display = 'flex';
+            try { setDoc(doc(db, "players", state.name), { level: state.level, undos: state.undos, taskPool: state.taskPool, activeTasks: state.activeTasks }, {merge:true}); } catch(e){}
+            initLevel();
+        };
+
+        // --- KÜLDETÉS FELÉPÍTÉSE ---
+        function generateObjectives() {
+            let scoreTarget = 2000 + (state.level * 1000);
+            state.objectives = { 
+                score: { current: 0, target: scoreTarget, color: '#f43f5e', label: 'Pontszám', desc: `Gyűjts össze ${scoreTarget} pontot a pályán!` } 
             };
-        }
+            
+            state.activeTasks.forEach(tId => {
+                const task = TASK_DB.find(t => t.id === tId);
+                if(task) {
+                    let target = Math.floor(task.baseTarget * (1 + ((state.level-1) * task.scale * 0.1)));
+                    let desc = task.desc.replace('{X}', target);
+                    state.objectives[task.id] = { current: 0, target: target, color: task.color, label: task.name, track: task.track, desc: desc };
+                }
+            });
 
-        function openMenu() {
-            DOM.mainMenu.classList.add('visible'); DOM.levelComplete.classList.remove('visible'); DOM.gameOver.classList.remove('visible');
-            DOM.menuCurrentLevel.textContent = state.currentLevel; document.body.classList.remove('ability-active');
-        }
-
-        function startLevel(levelNum) {
-            state.currentLevel = levelNum; state.config = generateLevelConfig(levelNum);
-            state.score = 0; state.isAnimating = false; state.selectedItem = null; state.undoState = null; state.comboCounter = 0; state.abilityCharge = 0; state.activeAbility = null;
-            state.walls = new Set(); state.totalWalls = state.config.WALL_COUNT;
-            
-            localStorage.setItem('szinFormaLevel', state.currentLevel); document.body.classList.remove('ability-active');
-            document.documentElement.style.setProperty('--grid-size', state.config.GRID_SIZE);
-            
-            generateSpecialCells(); buildBoardDOM();
-            
-            DOM.mainMenu.classList.remove('visible'); DOM.levelComplete.classList.remove('visible'); DOM.gameOver.classList.remove('visible');
-            
-            let badgeText = state.config.IS_MEGA ? 'MEGA BOSS' : (state.config.IS_BOSS ? 'BOSS SZINT' : `Szint: ${state.currentLevel}`);
-            DOM.levelBadge.className = `level-badge ${state.config.IS_BOSS ? 'boss-badge' : ''}`; DOM.levelBadge.textContent = badgeText;
-            
-            DOM.levelAnnouncer.innerHTML = state.config.IS_MEGA ? `<span style="color:#0ff;">MEGA BOSS</span><br>${state.currentLevel}` : (state.config.IS_BOSS ? `<span style="color:#ef4444">BOSS SZINT</span><br>${state.currentLevel}` : `SZINT ${state.currentLevel}`);
-            DOM.levelAnnouncer.classList.add('show'); setTimeout(() => DOM.levelAnnouncer.classList.remove('show'), 1500);
-
-            state.board = Array(state.config.GRID_SIZE).fill(null).map(() => Array(state.config.GRID_SIZE).fill(null));
-            generateNextItems(); updateUI(); placeInitialObstacles(); addRandomItems(state.config.INITIAL_BALLS, false);
-        }
-
-        function generateSpecialCells() {
-            state.goldCells = new Set(); state.walls.clear();
-            while(state.goldCells.size < state.config.GOLD_CELLS_COUNT) {
-                state.goldCells.add(`${Math.floor(Math.random()*state.config.GRID_SIZE)}-${Math.floor(Math.random()*state.config.GRID_SIZE)}`);
+            const needsDiamond = state.activeTasks.some(id => TASK_DB.find(t=>t.id===id).track === 'diamonds');
+            if(needsDiamond) {
+                const diaObj = state.objectives[state.activeTasks.find(id => TASK_DB.find(t=>t.id===id).track === 'diamonds')];
+                while(state.goldCells.size < diaObj.target + 2) state.goldCells.add(Math.floor(Math.random() * state.board.length));
             }
-            while(state.walls.size < state.config.WALL_COUNT) {
-                let r = Math.floor(Math.random()*state.config.GRID_SIZE); let c = Math.floor(Math.random()*state.config.GRID_SIZE);
-                state.walls.add(`${r}-${c}`);
+            for(let i=0; i<2; i++) spawnTimeSpark();
+        }
+
+        function incrementObjective(trackId, amount = 1) {
+            for(const[key, obj] of Object.entries(state.objectives)) {
+                if(obj.track === trackId || key === trackId) obj.current += amount;
             }
         }
 
-        function buildBoardDOM() {
-            DOM.board.innerHTML = '';
-            const svgOverlay = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svgOverlay.id = 'path-overlay'; DOM.board.appendChild(svgOverlay); DOM.pathOverlay = svgOverlay;
-            
-            for (let r = 0; r < state.config.GRID_SIZE; r++) {
-                for (let c = 0; c < state.config.GRID_SIZE; c++) {
-                    const cell = document.createElement('div'); cell.className = 'cell'; cell.dataset.r = r; cell.dataset.c = c;
-                    if (state.goldCells.has(`${r}-${c}`)) cell.classList.add('gold-cell');
+        function spawnTimeSpark() {
+            const empties =[];
+            for(let i=0; i<state.grid*state.grid; i++) {
+                if(!state.board[i] && !state.goldCells.has(i) && !state.timeSparks.has(i)) empties.push(i);
+            }
+            if(empties.length > 0) {
+                state.timeSparks.add(empties[Math.floor(Math.random() * empties.length)]);
+                renderBoard(); 
+            }
+        }
+
+        // --- DOM RENDERELÉS ÉS UI ---
+        function updateObjectivesUI() {
+            const container = document.getElementById('objectives-container');
+            if(container.children.length === 0) {
+                for(const[key, obj] of Object.entries(state.objectives)) {
+                    const card = document.createElement('div');
+                    card.id = `obj-card-${key}`;
+                    card.className = 'stat-card'; 
+                    card.style.borderLeftColor = obj.color;
                     
-                    if (state.walls.has(`${r}-${c}`)) {
-                        const wallSVG = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-                        wallSVG.setAttribute('class', 'glass-floor'); wallSVG.setAttribute('viewBox', '0 0 100 100');
-                        const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-                        use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', '#wall-floor'); wallSVG.appendChild(use);
-                        cell.appendChild(wallSVG);
-                    }
-
-                    cell.addEventListener('pointerdown', (e) => { e.preventDefault(); onCellClick(r, c); }); 
-                    cell.addEventListener('mouseover', () => onCellHover(r, c)); 
-                    cell.addEventListener('mouseout', clearPreviews);
-                    DOM.board.appendChild(cell);
+                    let isCompleted = obj.current >= obj.target;
+                    if(isCompleted) card.classList.add('completed');
+                    
+                    card.innerHTML = `
+                        <div class="stat-label" style="color:${obj.color}">${obj.label}</div>
+                        <div class="stat-desc">${obj.desc}</div>
+                        <div class="stat-value"><span id="obj-curr-${key}">${obj.current}</span> <span style="font-size:0.6em; color:#64748b;">/ ${obj.target}</span></div>
+                        <div class="progress"><div id="obj-fill-${key}" class="fill" style="background:${obj.color}; width:${Math.min(100, (obj.current/obj.target)*100)}%;"></div></div>
+                    `;
+                    container.appendChild(card);
                 }
-            }
-        }
-
-        function createItemSVG(item, isGhost = false) {
-            const wrapper = document.createElement('div'); wrapper.className = `ball ${isGhost ? 'ghost' : ''}`;
-            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-            svg.setAttribute('viewBox', '0 0 120 120');
-            
-            let smap = { bomb: '#bomb-symbol', crossbomb: '#crossbomb-symbol', chameleon: '#chameleon-symbol', stone: '#stone-symbol', virus: '#virus-symbol', ball: '#ball-symbol' };
-            if (item.type === 'timebomb') {
-                use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', '#timebomb-symbol'); svg.appendChild(use);
-                const txt = document.createElement('div'); txt.className = 'timer-text'; txt.textContent = item.timer; wrapper.appendChild(txt);
-            } else { use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', smap[item.type]); svg.appendChild(use); }
-            
-            if (item.type === 'ball' || item.type === 'timebomb') svg.style.setProperty('--ball-color', `var(--ball-${item.color})`);
-            if (item.type === 'stone') wrapper.classList.add('stone'); if (item.type === 'virus') wrapper.classList.add('virus');
-            if (item.isIced) {
-                wrapper.classList.add('iced'); const iceUse = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-                iceUse.setAttributeNS('http://www.w3.org/1999/xlink', 'href', '#ice-overlay'); svg.appendChild(iceUse);
-            }
-            wrapper.appendChild(svg); return wrapper;
-        }
-
-        function placeItemOnBoard(r, c, item, spawnAnim = false) { 
-            const itemEl = createItemSVG(item); if (spawnAnim) itemEl.classList.add('spawning'); 
-            const cell = getCell(r, c); if(cell) cell.appendChild(itemEl); 
-        }
-
-        function onCellClick(r, c) {
-            if (state.isAnimating) return;
-            const clickedItem = state.board[r][c];
-            
-            if (state.activeAbility === 'colorBomb') {
-                if (clickedItem && (clickedItem.type === 'ball' || clickedItem.type === 'timebomb')) { executeColorBomb(clickedItem.color); } 
-                else { state.activeAbility = null; document.body.classList.remove('ability-active'); updateUI(); } return;
-            }
-
-            const selectedEl = document.querySelector('.selected'); clearPreviews();
-
-            if (clickedItem && !['stone', 'virus'].includes(clickedItem.type) && !clickedItem.isIced) {
-                if (state.selectedItem && state.selectedItem.r === r && state.selectedItem.c === c) {
-                    state.selectedItem = null; selectedEl.classList.remove('selected'); return;
-                }
-                if (selectedEl) selectedEl.classList.remove('selected');
-                state.selectedItem = { r, c, type: clickedItem.type, color: clickedItem.color };
-                getCell(r, c).querySelector('.ball').classList.add('selected');
-            } else if (state.selectedItem && !clickedItem) {
-                const path = findPath(state.selectedItem.r, state.selectedItem.c, r, c);
-                if (path) {
-                    const type = state.selectedItem.type;
-                    if (type === 'bomb') moveAndExplode(state.selectedItem, {r,c}, path, 'normal');
-                    else if (type === 'crossbomb') moveAndExplode(state.selectedItem, {r,c}, path, 'cross');
-                    else moveBall(state.selectedItem, {r,c}, path);
-                } else if (selectedEl) {
-                    selectedEl.style.animation = 'none'; void selectedEl.offsetWidth; selectedEl.style.animation = 'select-bounce 0.4s infinite alternate';
-                }
-            }
-        }
-        
-        async function runGameTurn(clustersRemoved) {
-            if (!clustersRemoved) { 
-                state.comboCounter = 0; await processTimeBombsAndVirus(); await addRandomItems(state.config.BALLS_PER_TURN); 
             } else {
-                const extraRemoved = await checkForClustersAndRemove();
-                if(!extraRemoved && !state.virusDestroyedThisTurn) await spreadVirus();
+                for(const [key, obj] of Object.entries(state.objectives)) {
+                    const currEl = document.getElementById(`obj-curr-${key}`);
+                    const fillEl = document.getElementById(`obj-fill-${key}`);
+                    const cardEl = document.getElementById(`obj-card-${key}`);
+                    
+                    if(currEl) currEl.textContent = obj.current;
+                    if(fillEl) fillEl.style.width = `${Math.min(100, (obj.current / obj.target) * 100)}%`;
+                    
+                    if(obj.current >= obj.target && cardEl && !cardEl.classList.contains('completed')) {
+                        cardEl.classList.add('completed');
+                    }
+                }
             }
-            updateUI(); state.isAnimating = false; checkWinLoss();
+            document.getElementById('lvl-val').textContent = state.level;
+            document.getElementById('undo-count').textContent = state.undos;
+            
+            if(Date.now() > state.timeStopUntil) {
+                const btn = document.getElementById('btn-freeze');
+                btn.disabled = state.freezeCharge < 100;
+                btn.className = 'btn btn-action';
+                btn.innerHTML = `<span style="font-size: 1.2rem;">⏱️</span> IDŐSTOP (<span id="freeze-charge">${Math.floor(state.freezeCharge)}</span>%)`;
+            }
         }
 
-        async function processTimeBombsAndVirus() {
-            let bombExploded = false;
-            for(let r=0; r<state.config.GRID_SIZE; r++) {
-                for(let c=0; c<state.config.GRID_SIZE; c++) {
-                    const item = state.board[r][c];
-                    if (item && item.type === 'timebomb') {
-                        item.timer--;
-                        if (item.timer <= 0) {
-                            bombExploded = true; state.board[r][c] = {type: 'stone'}; placeItemOnBoard(r, c, state.board[r][c], true);[{r:r-1,c},{r:r+1,c},{r,c:c-1},{r,c:c+1}].forEach(n => {
-                                if(n.r>=0 && n.r<state.config.GRID_SIZE && n.c>=0 && n.c<state.config.GRID_SIZE) {
-                                    if(state.board[n.r][n.c]) getCell(n.r, n.c).querySelector('.ball')?.remove();
-                                    state.board[n.r][n.c] = {type: 'stone'}; placeItemOnBoard(n.r, n.c, state.board[n.r][n.c], true);
-                                }
-                            });
-                            triggerEpicExplosion(r, c, '#ef4444');
-                        } else {
-                            const txt = getCell(r, c).querySelector('.timer-text'); if(txt) txt.textContent = item.timer;
+        function initLevel() {
+            state.grid = Math.min(11, 7 + Math.floor((state.level - 1) / 30)); 
+            document.documentElement.style.setProperty('--grid-dim', state.grid);
+            state.board = Array(state.grid * state.grid).fill(null);
+            state.goldCells.clear(); state.timeSparks.clear(); 
+            state.freezeCharge = 0; state.timeStopUntil = 0;
+            state.history =[]; state.selected = null; state.isAnimating = false; state.lastMovedTo = null;
+            
+            document.getElementById('objectives-container').innerHTML = '';
+            generateObjectives(); updateObjectivesUI();
+            
+            createBoardDOM();
+            genNext(); spawnBalls(Math.floor(state.grid * 1.5)); 
+            renderBoard(); 
+        }
+
+        function createBoardDOM() {
+            const board = document.getElementById('board'); board.innerHTML = '';
+            for(let i=0; i<state.grid * state.grid; i++) {
+                const cell = document.createElement('div');
+                cell.id = `cell-${i}`; cell.className = 'cell';
+                cell.onclick = () => handleMove(i);
+                cell.onmouseenter = () => showPreviewPath(i);
+                cell.onmouseleave = () => document.getElementById('path-svg').innerHTML = '';
+                board.appendChild(cell);
+            }
+        }
+
+        function createBallDOM(item) {
+            const wrapper = document.createElement('div'); wrapper.className = 'ball-wrapper';
+            const b = document.createElement('div'); b.className = 'ball';
+            if(item.type === 'rainbow') b.classList.add('szivarvany');
+            else if(item.type === 'bomb') { b.classList.add('bomb-ball'); b.innerHTML = '💣'; }
+            else if(item.type === 'nuke') { b.classList.add('nuke-ball'); b.innerHTML = '☢️'; }
+            else { 
+                b.style.setProperty('--ball-color', COLORS[item.color][0]); b.style.setProperty('--ball-dark', COLORS[item.color][1]);
+                if (item.stripe) { const stripe = document.createElement('div'); stripe.className = `stripe-${item.stripe}`; b.appendChild(stripe); }
+            }
+            wrapper.appendChild(b); return wrapper;
+        }
+
+        function renderBoard() {
+            for(let i=0; i<state.grid * state.grid; i++) {
+                const cell = document.getElementById(`cell-${i}`);
+                if(!cell) continue;
+                
+                cell.classList.remove('diamond', 'timespark');
+                if(state.goldCells.has(i)) cell.classList.add('diamond');
+                else if(state.timeSparks.has(i)) cell.classList.add('timespark');
+
+                const item = state.board[i];
+                let ballWrapper = cell.querySelector('.ball-wrapper');
+                
+                if(item) {
+                    if(!ballWrapper || ballWrapper.classList.contains('removing')) {
+                        if(ballWrapper) ballWrapper.remove();
+                        ballWrapper = createBallDOM(item);
+                        cell.appendChild(ballWrapper);
+                    }
+                    if(state.selected === i) ballWrapper.classList.add('selected');
+                    else ballWrapper.classList.remove('selected');
+                } else if(ballWrapper && !ballWrapper.classList.contains('removing')) {
+                    ballWrapper.remove();
+                }
+            }
+        }
+
+        // --- JÁTÉKMENET LOGIKA ---
+        async function handleMove(i) {
+            if(state.isAnimating) return;
+            const item = state.board[i];
+
+            if(item) {
+                if(item.type === 'bomb' || item.type === 'nuke') {
+                    if (state.selected === i) { triggerBomb(i); return; } 
+                    else { state.selected = i; renderBoard(); return; }
+                } else {
+                    state.selected = (state.selected === i) ? null : i;
+                    renderBoard();
+                }
+            } else if(state.selected !== null && !item) {
+                const path = findPath(state.selected, i);
+                if(path) {
+                    document.getElementById('path-svg').innerHTML = '';
+                    saveHistory();
+                    
+                    const obj = state.board[state.selected];
+                    state.board[state.selected] = null;
+                    state.lastMovedTo = i; 
+                    
+                    incrementObjective('distance', path.length - 1);
+
+                    path.forEach(idx => {
+                        if(state.timeSparks.has(idx)) {
+                            state.timeSparks.delete(idx);
+                            state.freezeCharge = Math.min(100, state.freezeCharge + 25);
+                            incrementObjective('sparks', 1);
+                            showFloatingText("⚡", idx);
+                            setTimeout(spawnTimeSpark, 300);
+                        }
+                    });
+
+                    await animateLiquidMove(path, obj);
+                    state.board[i] = obj;
+                    renderBoard();
+
+                    const matched = await checkMatches();
+                    if(!matched) {
+                        if(Date.now() > state.timeStopUntil) {
+                            spawnBalls(3); 
+                            renderBoard();
+                            await checkMatches(); 
                         }
                     }
-                }
-            }
-            if(bombExploded) screenShakeHard();
-            if(!state.virusDestroyedThisTurn) await spreadVirus();
-        }
-
-        async function spreadVirus() {
-            const viruses =[];
-            for(let r=0; r<state.config.GRID_SIZE; r++) for(let c=0; c<state.config.GRID_SIZE; c++) if(state.board[r][c]?.type === 'virus') viruses.push({r,c});
-            if(viruses.length === 0) return;
-            
-            viruses.sort(() => Math.random() - 0.5);
-            const dirs =[{r:-1,c:-1},{r:-1,c:0},{r:-1,c:1},{r:0,c:-1},{r:0,c:1},{r:1,c:-1},{r:1,c:0},{r:1,c:1}];
-            for(let v of viruses) {
-                let empties =[];
-                for(let d of dirs) {
-                    let nr = v.r+d.r, nc = v.c+d.c;
-                    if(nr>=0 && nr<state.config.GRID_SIZE && nc>=0 && nc<state.config.GRID_SIZE && !state.board[nr][nc]) empties.push({r:nr, c:nc});
-                }
-                if(empties.length > 0) {
-                    const target = empties[Math.floor(Math.random() * empties.length)];
-                    state.board[target.r][target.c] = {type: 'virus'};
-                    placeItemOnBoard(target.r, target.c, state.board[target.r][target.c], true); break;
+                    
+                    state.selected = null; renderBoard(); updateObjectivesUI(); checkLevelEnd();
                 }
             }
         }
 
-        function checkWinLoss() {
-            if (state.score >= state.config.GOAL_SCORE && state.walls.size === 0) {
-                state.isAnimating = true;
-                setTimeout(() => { document.getElementById('win-score').textContent = state.score; DOM.levelComplete.classList.add('visible'); localStorage.setItem('szinFormaBombs', state.earnedAbilities.colorBomb); }, 600);
-                return;
-            }
-            
-            let empty = 0; for(let r=0;r<state.config.GRID_SIZE;r++) for(let c=0;c<state.config.GRID_SIZE;c++) if(!state.board[r][c]) empty++;
-            if (empty === 0) {
-                state.isAnimating = true;
-                setTimeout(() => { 
-                    document.getElementById('lose-missing-score').textContent = Math.max(0, state.config.GOAL_SCORE - state.score); 
-                    document.getElementById('lose-missing-walls').textContent = state.walls.size;
-                    if (state.score >= state.config.GOAL_SCORE && state.walls.size > 0) {
-                        document.getElementById('lose-reason-text').textContent = "A tábla megtelt! Nem törted fel az összes üvegfalat.";
-                    } else { document.getElementById('lose-reason-text').textContent = "A tábla megtelt, vagy a vírus győzött."; }
-                    DOM.gameOver.classList.add('visible'); 
-                }, 600);
-            }
+        function saveHistory() {
+            state.history.push(JSON.stringify({ board: state.board, gold: Array.from(state.goldCells), sparks: Array.from(state.timeSparks) }));
+            if(state.history.length > 5) state.history.shift(); 
         }
 
-        /* GYORSÍTOTT ANIMÁCIÓK - PATTOGÓS JÁTÉKMENET */
-        async function moveBall(fromPos, toPos, path) {
-            saveUndoState(); state.isAnimating = true;
-            const ballEl = getCell(fromPos.r, fromPos.c).querySelector('.ball'); ballEl.classList.remove('selected');
-            
-            const cellW = ballEl.parentElement.offsetWidth;
-            const keyframes = path.map((p, index) => {
-                let currentScale = 0.92 + Math.sin((index / (path.length - 1)) * Math.PI) * 0.23;
-                return { transform: `translate3d(${(p.c - fromPos.c) * cellW}px, ${(p.r - fromPos.r) * cellW}px, 0) scale(${currentScale})` };
-            });
-            
-            ballEl.style.zIndex = "50";
-            // JELENTŐSEN GYORSABB MOZGÁS
-            const anim = ballEl.animate(keyframes, { duration: Math.min(path.length * 25 + 50, 300), easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' });
-            await anim.finished;
-            
-            ballEl.style.zIndex = "10";
-            getCell(toPos.r, toPos.c).appendChild(ballEl);
-            state.board[toPos.r][toPos.c] = state.board[fromPos.r][fromPos.c]; state.board[fromPos.r][fromPos.c] = null; state.selectedItem = null;
-            const removed = await checkForClustersAndRemove(); runGameTurn(removed);
-        }
+        window.undoMove = () => {
+            if(state.history.length > 0 && state.undos > 0 && !state.isAnimating) {
+                const prev = JSON.parse(state.history.pop());
+                state.board = prev.board; state.goldCells = new Set(prev.gold); state.timeSparks = new Set(prev.sparks);
+                state.undos--; state.selected = null;
+                renderBoard(); updateObjectivesUI();
+            }
+        };
 
-        function screenShakeHard() { DOM.boardContainer.classList.remove('shake-hard'); void DOM.boardContainer.offsetWidth; DOM.boardContainer.classList.add('shake-hard'); }
-        function screenShakeMega() { DOM.boardContainer.classList.remove('shake-mega'); void DOM.boardContainer.offsetWidth; DOM.boardContainer.classList.add('shake-mega'); }
-        
-        function triggerEpicExplosion(r, c, colorHex) {
-            const cell = getCell(r, c); if (!cell) return;
-            const exp = document.createElement('div'); exp.className = 'epic-explosion'; exp.style.setProperty('--exp-color', colorHex);
-            cell.appendChild(exp); setTimeout(() => { exp.remove(); }, 300); // GYORSABB
-        }
-        
-        function spawnShards(r, c, colorHex) {
-            const cell = getCell(r, c); if (!cell) return;
-            for(let i=0; i<5; i++) {
-                const shard = document.createElement('div'); shard.className = 'shard';
-                shard.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px'; shard.style.setProperty('--exp-color', colorHex);
-                const angle = (i * 72) + (Math.random() * 20 - 10); const dist = 50 + Math.random() * 40;
-                shard.style.setProperty('--tx', Math.cos(angle * Math.PI / 180) * dist + 'px'); shard.style.setProperty('--ty', Math.sin(angle * Math.PI / 180) * dist + 'px');
-                shard.style.setProperty('--rot', (Math.random() * 720 - 360) + 'deg');
-                cell.appendChild(shard); setTimeout(() => shard.remove(), 1000); // GYORSABB
+        // --- ÚTVONAL ---
+        function showPreviewPath(targetIdx) {
+            const svg = document.getElementById('path-svg'); svg.innerHTML = '';
+            if(state.selected === null || state.board[targetIdx] || state.isAnimating) return;
+
+            const path = findPath(state.selected, targetIdx);
+            if(path && path.length > 1) {
+                const boardRect = document.getElementById('board').getBoundingClientRect();
+                svg.setAttribute('viewBox', `0 0 ${boardRect.width} ${boardRect.height}`);
+
+                const points = path.map(idx => {
+                    const cellRect = document.getElementById(`cell-${idx}`).getBoundingClientRect();
+                    return `${(cellRect.left - boardRect.left) + cellRect.width / 2},${(cellRect.top - boardRect.top) + cellRect.height / 2}`;
+                }).join(' ');
+
+                const pathEl = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                pathEl.setAttribute("d", `M ${points.split(' ').join(' L ')}`); 
+                pathEl.setAttribute("class", "path-line");
+                svg.appendChild(pathEl);
             }
         }
 
-        function breakWall(r, c) {
-            const key = `${r}-${c}`;
-            if (state.walls.has(key)) {
-                state.walls.delete(key);
-                const cell = getCell(r, c);
-                const wallLayer = cell.querySelector('.glass-floor');
-                if (wallLayer) {
-                    wallLayer.style.transition = "transform 0.3s, opacity 0.3s"; // GYORSABB
-                    wallLayer.style.transform = "scale(1.5)"; wallLayer.style.opacity = "0";
-                    setTimeout(() => wallLayer.remove(), 300);
-                    spawnShards(r, c, '#38bdf8');
-                    showFloatingText("+FAL", r, c, 'score-text');
-                }
-            }
-        }
+        function findPath(start, end) {
+            const queue = [[start]]; const visited = new Set([start]);
+            while(queue.length > 0) {
+                const path = queue.shift(); const node = path[path.length-1];
+                if(node === end) return path;
 
-        function shootLasers(r, c) {
-            const toRemove = new Set();
-            for(let i=0; i<state.config.GRID_SIZE; i++) {
-                if(state.board[r][i] && !['stone','virus'].includes(state.board[r][i].type)) toRemove.add(`${r}-${i}`);
-                if(state.board[i][c] && !['stone','virus'].includes(state.board[i][c].type)) toRemove.add(`${i}-${c}`);
-            }
-            return toRemove;
-        }
-
-        async function executeColorBomb(targetColor) {
-            state.isAnimating = true; state.activeAbility = null; document.body.classList.remove('ability-active');
-            state.earnedAbilities.colorBomb--; localStorage.setItem('szinFormaBombs', state.earnedAbilities.colorBomb); updateUI();
-            
-            const toRemove = new Set();
-            for (let r = 0; r < state.config.GRID_SIZE; r++) {
-                for (let c = 0; c < state.config.GRID_SIZE; c++) {
-                    const item = state.board[r][c];
-                    if (item && item.color === targetColor) toRemove.add(`${r}-${c}`);
-                }
-            }
-            screenShakeMega(); await removeItems(toRemove, toRemove.size * 50, true);
-            generateNextItems(); runGameTurn(true);
-        }
-
-        async function moveAndExplode(fromPos, toPos, path, type) {
-            saveUndoState(); state.isAnimating = true;
-            const bombEl = getCell(fromPos.r, fromPos.c).querySelector('.ball'); bombEl.classList.remove('selected');
-            const cellW = bombEl.parentElement.offsetWidth;
-            const keyframes = path.map((p, index) => {
-                let currentScale = 0.92 + Math.sin((index / (path.length - 1)) * Math.PI) * 0.23;
-                return { transform: `translate3d(${(p.c - fromPos.c) * cellW}px, ${(p.r - fromPos.r) * cellW}px, 0) scale(${currentScale})` };
-            });
-            
-            bombEl.style.zIndex = "50";
-            const anim = bombEl.animate(keyframes, { duration: Math.min(path.length * 25 + 50, 300), easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' });
-            await anim.finished;
-            
-            state.board[fromPos.r][fromPos.c] = null; bombEl.remove(); state.selectedItem = null;
-            
-            let toRemove = new Set();
-            if (type === 'normal') {
-                for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
-                    const r = toPos.r + dr, c = toPos.c + dc;
-                    if (r >= 0 && r < state.config.GRID_SIZE && c >= 0 && c < state.config.GRID_SIZE) {
-                        if(state.board[r][c]) toRemove.add(`${r}-${c}`);
-                        breakWall(r, c);
+                const r = Math.floor(node / state.grid), c = node % state.grid;
+                [[0,1],[0,-1],[1,0],[-1,0]].forEach(([dr, dc]) => {
+                    const nr = r+dr, nc = c+dc, nIdx = nr * state.grid + nc;
+                    if(nr>=0 && nr<state.grid && nc>=0 && nc<state.grid && !state.board[nIdx] && !visited.has(nIdx)) {
+                        visited.add(nIdx); queue.push([...path, nIdx]);
                     }
-                }
-                screenShakeHard(); triggerEpicExplosion(toPos.r, toPos.c, '#f43f5e'); spawnShards(toPos.r, toPos.c, '#f43f5e');
-            } else if (type === 'cross') {
-                toRemove = shootLasers(toPos.r, toPos.c);
-                for(let i=0; i<state.config.GRID_SIZE; i++) { breakWall(r, i); breakWall(i, c); }
-                screenShakeMega(); triggerEpicExplosion(toPos.r, toPos.c, '#0ff'); spawnShards(toPos.r, toPos.c, '#0ff');
+                });
             }
-            
-            if (toRemove.size > 0) await removeItems(toRemove, toRemove.size * 30, false);
-            await new Promise(res => setTimeout(res, 150)); generateNextItems(); runGameTurn(true); // GYORSABB
+            return null;
         }
 
-        async function checkForClustersAndRemove() {
-            state.virusDestroyedThisTurn = false;
-            let globalVisited = new Set(); let allToRemove = new Set();
-            let totalScore = 0; let megaPopTriggered = false; let megaPopCenter = null;
-            const dirs =[{r:-1,c:-1},{r:-1,c:0},{r:-1,c:1},{r:0,c:-1},{r:0,c:1},{r:1,c:-1},{r:1,c:0},{r:1,c:1}];
+        async function animateLiquidMove(path, obj) {
+            state.isAnimating = true;
+            
+            const startCell = document.getElementById(`cell-${path[0]}`);
+            const w = startCell.querySelector('.ball-wrapper'); if(w) w.remove();
 
-            for (let r = 0; r < state.config.GRID_SIZE; r++) {
-                for (let c = 0; c < state.config.GRID_SIZE; c++) {
-                    const key = `${r}-${c}`; if (globalVisited.has(key)) continue;
-                    const item = state.board[r][c]; if (!item || !['ball', 'timebomb'].includes(item.type)) continue;
+            const flyingDOM = createBallDOM(obj);
+            flyingDOM.style.position = 'absolute'; flyingDOM.style.zIndex = '1000'; flyingDOM.style.margin = '0';
+            
+            const cellRect = startCell.getBoundingClientRect();
+            flyingDOM.style.width = cellRect.width + 'px'; flyingDOM.style.height = cellRect.height + 'px';
+            document.getElementById('board').appendChild(flyingDOM);
 
-                    let clusterColor = item.color; let clusterKeys = new Set(); let queue =[{r,c}];
+            const boardRect = document.getElementById('board').getBoundingClientRect();
+            const keyframes = path.map(idx => {
+                const cRect = document.getElementById(`cell-${idx}`).getBoundingClientRect();
+                return { transform: `translate(${cRect.left - boardRect.left}px, ${cRect.top - boardRect.top}px)` };
+            });
 
-                    while(queue.length > 0) {
-                        const curr = queue.shift(); const cKey = `${curr.r}-${curr.c}`;
-                        if (clusterKeys.has(cKey)) continue;
-                        clusterKeys.add(cKey); globalVisited.add(cKey);
+            const duration = Math.min(250, path.length * 25); 
+            const anim = flyingDOM.animate(keyframes, { duration, easing: 'linear', fill: 'forwards' });
+            
+            await anim.finished; flyingDOM.remove(); state.isAnimating = false;
+        }
 
-                        for(let d of dirs) {
-                            let nr = curr.r + d.r, nc = curr.c + d.c;
-                            if (nr>=0 && nr<state.config.GRID_SIZE && nc>=0 && nc<state.config.GRID_SIZE) {
-                                let nKey = `${nr}-${nc}`; let nItem = state.board[nr][nc];
-                                if (nItem && !clusterKeys.has(nKey)) {
-                                    if ((['ball','timebomb'].includes(nItem.type) && nItem.color === clusterColor) || nItem.type === 'chameleon') queue.push({r:nr, c:nc});
+        // --- ROBBANÁSOK ÉS LÁNCREAKCIÓK ---
+        async function checkMatches() {
+            let initialToRemove = new Set();
+            let spawnMap = new Map();
+            let totalScore = 0;
+
+            for(let i=0; i<state.board.length; i++) {
+                const startItem = state.board[i];
+                if(!startItem || ['bomb','nuke','rainbow'].includes(startItem.type)) continue;
+                
+                const matchColor = startItem.color;
+                const cluster = new Set();
+                const stack = [i];
+                
+                while(stack.length > 0) {
+                    const node = stack.pop();
+                    if(cluster.has(node)) continue;
+                    cluster.add(node);
+                    
+                    const r = Math.floor(node / state.grid), c = node % state.grid;
+                    [[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]].forEach(([dr, dc]) => {
+                        const nr = r+dr, nc = c+dc, nIdx = nr * state.grid + nc;
+                        if(nr>=0 && nr<state.grid && nc>=0 && nc<state.grid) {
+                            const nItem = state.board[nIdx];
+                            if(nItem && !['bomb','nuke'].includes(nItem.type)) {
+                                if (nItem.color === matchColor || nItem.type === 'rainbow') {
+                                    if (!cluster.has(nIdx)) stack.push(nIdx);
                                 }
                             }
                         }
-                    }
+                    });
+                }
 
-                    if (clusterKeys.size >= state.config.MIN_CLUSTER) {
-                        let multiplier = 1;
-                        let clusterScore = (clusterKeys.size * 20) + Math.pow(clusterKeys.size - state.config.MIN_CLUSTER, 2) * 80;
-                        
-                        clusterKeys.forEach(k => { allToRemove.add(k); if (state.goldCells.has(k)) multiplier = 3; });
-                        clusterScore *= multiplier;
-                        
-                        if (clusterKeys.size >= 8) { megaPopTriggered = true; megaPopCenter = {r:r, c:c}; clusterScore += 500; }
+                if(cluster.size >= 5) {
+                    cluster.forEach(idx => initialToRemove.add(idx));
+                    totalScore += cluster.size * 150;
+                    incrementObjective('combo6', cluster.size >= 6 ? 1 : 0);
+                    incrementObjective('combo7', cluster.size >= 7 ? 1 : 0);
 
-                        clusterKeys.forEach(k => {
-                            const [cr, cc] = k.split('-').map(Number);
-                            breakWall(cr, cc);
-                            dirs.forEach(d => {
-                                let nr = cr+d.r, nc = cc+d.c;
-                                if(nr>=0 && nr<state.config.GRID_SIZE && nc>=0 && nc<state.config.GRID_SIZE) {
-                                    const adjItem = state.board[nr][nc];
-                                    if(adjItem) {
-                                        if (adjItem.type === 'stone') { allToRemove.add(`${nr}-${nc}`); clusterScore+=50; }
-                                        if (adjItem.type === 'virus') { allToRemove.add(`${nr}-${nc}`); clusterScore+=100; state.virusDestroyedThisTurn = true; }
-                                    }
-                                }
-                            });
-                        });
-                        totalScore += clusterScore;
+                    if (cluster.size >= 6) {
+                        let spawnIdx = cluster.has(state.lastMovedTo) ? state.lastMovedTo : Array.from(cluster)[0];
+                        if (!spawnMap.has(spawnIdx)) {
+                            if (cluster.size >= 7) spawnMap.set(spawnIdx, { type: 'nuke' });
+                            else spawnMap.set(spawnIdx, { type: 'bomb' });
+                        }
                     }
                 }
             }
 
-            if (allToRemove.size > 0) {
-                state.comboCounter++; let comboMult = 1 + (state.comboCounter * 0.5);
-                totalScore = Math.floor(totalScore * comboMult);
-
-                let avgR=0, avgC=0, arr = Array.from(allToRemove);
-                arr.forEach(k => { const[r,c]=k.split('-'); avgR+=parseInt(r); avgC+=parseInt(c); });
-                avgR/=arr.length; avgC/=arr.length;
-
-                if (megaPopTriggered && megaPopCenter) {
-                    screenShakeMega();
-                    state.earnedAbilities.undo++; localStorage.setItem('szinFormaUndos', state.earnedAbilities.undo);
-                    showFloatingText("MEGA POP! +1 VISSZA", megaPopCenter.r, megaPopCenter.c, 'mega-text');
-                    const megaRemoves = shootLasers(megaPopCenter.r, megaPopCenter.c);
-                    for(let i=0; i<state.config.GRID_SIZE; i++) { breakWall(megaPopCenter.r, i); breakWall(i, megaPopCenter.c); }
-                    megaRemoves.forEach(k => allToRemove.add(k));
-                } else if (state.comboCounter === 3) {
-                    screenShakeHard();
-                    state.earnedAbilities.undo++; localStorage.setItem('szinFormaUndos', state.earnedAbilities.undo);
-                    showFloatingText("+1 VISSZA LÁNC REAKCIÓ!", avgR, avgC, 'combo-text');
-                } else { screenShakeHard(); }
-
-                await removeItems(allToRemove, totalScore, true);
-                
-                state.abilityCharge += allToRemove.size * state.config.ABILITY_CHARGE_PER_BALL;
-                while(state.abilityCharge >= state.config.ABILITY_CHARGE_GOAL) { state.earnedAbilities.colorBomb++; state.abilityCharge -= state.config.ABILITY_CHARGE_GOAL; }
-                return true;
+            if (initialToRemove.size > 0) {
+                return await processExplosions(initialToRemove, spawnMap, totalScore);
             }
             return false;
         }
-        
-        async function removeItems(itemSet, score, showPoints) {
-            state.score += Math.floor(score);
-            let avgR=0, avgC=0, arr = Array.from(itemSet);
-            arr.forEach(k => { const [r,c]=k.split('-'); avgR+=parseInt(r); avgC+=parseInt(c); });
-            avgR/=arr.length; avgC/=arr.length;
 
-            if (showPoints) showFloatingText(`+${Math.floor(score)}`, avgR, avgC, 'score-text');
-            if (state.comboCounter > 1) {
-                const words =["", "", "SZÉP!", "KIRÁLY!", "PROFI!", "ISTENI!", "ZSENIÁLIS!"];
-                let w = words[Math.min(state.comboCounter, words.length-1)];
-                showFloatingText(`${state.comboCounter}X KOMBÓ! ${w}`, avgR-1, avgC, 'combo-text');
+        async function processExplosions(startSet, spawnMap, initialScore = 0) {
+            state.isAnimating = true;
+            let finalToRemove = new Set(startSet);
+            let cascadeQueue = Array.from(startSet);
+            let sorkilovesTortent = false;
+            let totalScore = initialScore;
+
+            while(cascadeQueue.length > 0) {
+                let curr = cascadeQueue.shift();
+                let item = state.board[curr];
+                if (!item) continue;
+
+                let r = Math.floor(curr / state.grid);
+                let c = curr % state.grid;
+                let radius = item.type === 'nuke' ? 2 : (item.type === 'bomb' ? 1 : 0);
+
+                let toAdd =[];
+                if (radius > 0) {
+                    for(let dr=-radius; dr<=radius; dr++) {
+                        for(let dc=-radius; dc<=radius; dc++) {
+                            let nr = r+dr, nc = c+dc;
+                            if(nr>=0 && nr<state.grid && nc>=0 && nc<state.grid) {
+                                toAdd.push(nr * state.grid + nc);
+                            }
+                        }
+                    }
+                } else if (item.stripe === 'h') {
+                    sorkilovesTortent = true;
+                    for(let cCol=0; cCol<state.grid; cCol++) toAdd.push(r * state.grid + cCol);
+                } else if (item.stripe === 'v') {
+                    sorkilovesTortent = true;
+                    for(let rRow=0; rRow<state.grid; rRow++) toAdd.push(rRow * state.grid + c);
+                }
+
+                toAdd.forEach(nIdx => {
+                    if (!finalToRemove.has(nIdx) && state.board[nIdx]) {
+                        finalToRemove.add(nIdx);
+                        let nItem = state.board[nIdx];
+                        if (nItem.type === 'bomb' || nItem.type === 'nuke' || nItem.stripe) {
+                            cascadeQueue.push(nIdx);
+                        }
+                    }
+                });
             }
 
-            for (const key of itemSet) {
-                const[r, c] = key.split('-').map(Number);
-                const item = state.board[r][c]; state.board[r][c] = null;
-                const cell = getCell(r, c); const ball = cell.querySelector('.ball:not(.ghost)');
-                
-                if (ball) {
-                    ball.style.transform = 'scale(0) translate3d(0,0,0)'; ball.style.opacity='0';
-                    let colHex = (item && CSS_COLORS[item.color]) ? CSS_COLORS[item.color] : '#fff';
-                    if(item && item.type === 'virus') colHex = '#22c55e';
-                    
-                    triggerEpicExplosion(r, c, colHex); spawnShards(r, c, colHex);
-                    setTimeout(() => ball.remove(), 200); // GYORSABB eltüntetés
+            if (finalToRemove.size === 0) {
+                state.isAnimating = false;
+                return false;
+            }
+
+            let dominantColor = 'cyan';
+            for(let idx of finalToRemove) {
+                const item = state.board[idx];
+                if(item) {
+                    if(item.color) { dominantColor = item.color; incrementObjective('c_' + item.color, 1); }
+                    if(item.type === 'rainbow') incrementObjective('rainbows', 1);
+                    if(item.type === 'bomb' || item.type === 'nuke') incrementObjective('bombs', 1);
+                    if(item.stripe === 'h') incrementObjective('lines_h', 1);
+                    if(item.stripe === 'v') incrementObjective('lines_v', 1);
+                    if(item.stripe && item.color) incrementObjective('l_' + item.color, 1);
+                    incrementObjective('total', 1);
                 }
             }
-            await new Promise(resolve => setTimeout(resolve, 150)); // GYORSABB szünet
+
+            finalToRemove.forEach(idx => {
+                if(state.goldCells.has(idx)) {
+                    state.goldCells.delete(idx);
+                    state.undos = Math.min(10, state.undos + 1);
+                    incrementObjective('diamonds', 1);
+                    showFloatingText("💎 +1 VISSZA", idx);
+                }
+                const wrapper = document.getElementById(`cell-${idx}`).querySelector('.ball-wrapper');
+                if(wrapper) wrapper.classList.add('removing');
+                state.board[idx] = null;
+            });
+
+            if (spawnMap) {
+                for (let [sIdx, sItem] of spawnMap.entries()) {
+                    state.board[sIdx] = sItem;
+                    showFloatingText(sItem.type === 'nuke' ? "☢️ ATOM!" : "💣 BOMBA!", sIdx);
+                }
+            }
+
+            totalScore += finalToRemove.size * 50;
+            incrementObjective('score', totalScore);
+
+            const targetTextPos = Array.from(finalToRemove)[Math.floor(finalToRemove.size / 2)];
+            if (sorkilovesTortent) showFloatingText("SORKILÖVÉS!", targetTextPos);
+            else if (finalToRemove.size >= 8) showFloatingText("BRUTÁLIS!", targetTextPos);
+            else if (totalScore > 0) showFloatingText(`+${totalScore}`, targetTextPos);
+
+            html5Explosion(Array.from(finalToRemove), dominantColor);
+
+            const box = document.getElementById('board-container');
+            box.classList.remove('flash-shake'); void box.offsetWidth; box.classList.add('flash-shake');
+
+            updateObjectivesUI();
+
+            await new Promise(r => setTimeout(r, 200));
+            renderBoard();
+            state.isAnimating = false;
+            return true;
         }
 
-        function placeInitialObstacles() {
-            let sPlaced = 0, vPlaced = 0;
-            while(sPlaced < state.config.INITIAL_STONES) {
-                const r = Math.floor(Math.random() * state.config.GRID_SIZE), c = Math.floor(Math.random() * state.config.GRID_SIZE);
-                if (!state.board[r][c]) { state.board[r][c] = {type: 'stone'}; placeItemOnBoard(r, c, state.board[r][c]); sPlaced++; }
-            }
-            while(vPlaced < state.config.INITIAL_VIRUS) {
-                const r = Math.floor(Math.random() * state.config.GRID_SIZE), c = Math.floor(Math.random() * state.config.GRID_SIZE);
-                if (!state.board[r][c] && !state.goldCells.has(`${r}-${c}`)) { state.board[r][c] = {type: 'virus'}; placeItemOnBoard(r, c, state.board[r][c]); vPlaced++; }
-            }
-        }
-
-        async function addRandomItems(count, checkClusters = true) {
-            const emptyCells =[]; for (let r=0;r<state.config.GRID_SIZE;r++) for (let c=0;c<state.config.GRID_SIZE;c++) if (!state.board[r][c]) emptyCells.push({r,c});
-            if (emptyCells.length === 0) return;
-
-            const actualCount = Math.min(count, emptyCells.length);
-            const itemsToPlace = (count === state.config.BALLS_PER_TURN && actualCount === state.config.BALLS_PER_TURN) ?[...state.nextItems] : Array(actualCount).fill(null).map(() => generateRandomItem(false));
+        async function triggerBomb(centerIdx) {
+            if(state.isAnimating) return;
+            state.selected = null;
+            let startSet = new Set([centerIdx]);
             
-            for (const item of itemsToPlace) {
-                const { r, c } = emptyCells.splice(Math.floor(Math.random() * emptyCells.length), 1)[0];
-                state.board[r][c] = item; placeItemOnBoard(r, c, item, true);
-                await new Promise(res => setTimeout(res, 10)); // NAGYON GYORS SPAWN
-            }
+            await processExplosions(startSet, null, 0);
 
-            if (count === state.config.BALLS_PER_TURN) generateNextItems();
-            updateUI(); if(checkClusters) {
-                const extraRemoved = await checkForClustersAndRemove();
-                if(!extraRemoved && !state.virusDestroyedThisTurn) await spreadVirus();
+            if(Date.now() > state.timeStopUntil) {
+                spawnBalls(3); 
+                renderBoard();
+                await checkMatches(); 
             }
+            checkLevelEnd();
         }
 
-        function generateRandomItem(allowSpecial = true) {
-            const color = state.config.COLORS[Math.floor(Math.random() * state.config.COLORS.length)];
-            if (!allowSpecial) return { type: 'ball', color };
+        // --- GOLYÓK GENERÁLÁSA ---
+        function genRandomBall() {
+            const maxColors = Math.min(COLOR_KEYS.length, 3 + Math.floor((state.level - 1) / 10));
+            const pool = COLOR_KEYS.slice(0, maxColors);
+            
             const rand = Math.random();
-            if (rand < state.config.TIMEBOMB_CHANCE) return { type: 'timebomb', color, timer: 10 + Math.floor(Math.random()*5) };
-            if (rand < state.config.TIMEBOMB_CHANCE + state.config.CROSSBOMB_CHANCE) return { type: 'crossbomb' };
-            if (rand < state.config.TIMEBOMB_CHANCE + state.config.CROSSBOMB_CHANCE + state.config.BOMB_CHANCE) return { type: 'bomb' };
-            if (rand < state.config.TIMEBOMB_CHANCE + state.config.CROSSBOMB_CHANCE + state.config.BOMB_CHANCE + state.config.CHAMELEON_CHANCE) return { type: 'chameleon' };
-            return { type: 'ball', color };
-        }
-        function generateNextItems() { state.nextItems = Array(state.config.BALLS_PER_TURN).fill(null).map(() => generateRandomItem()); }
-
-        function updateUI() {
-            DOM.score.textContent = state.score; DOM.goalScore.textContent = state.config.GOAL_SCORE;
-            DOM.goalBarFill.style.width = `${Math.min(100, (state.score / state.config.GOAL_SCORE) * 100)}%`;
+            const bombChance = Math.max(0.01, 0.04 - (state.level * 0.00005));
+            const rainbowChance = Math.max(0.02, 0.06 - (state.level * 0.00005));
             
-            DOM.wallCountTotal.textContent = state.totalWalls;
-            let broken = state.totalWalls - state.walls.size;
-            DOM.wallsBroken.textContent = broken; DOM.wallsTotal.textContent = state.totalWalls;
-            DOM.wallBarFill.style.width = state.totalWalls > 0 ? `${Math.min(100, (broken / state.totalWalls) * 100)}%` : '100%';
-
-            DOM.undoCount.textContent = state.earnedAbilities.undo; 
-            DOM.undoButton.disabled = state.earnedAbilities.undo === 0 || !state.undoState || state.isAnimating;
-            DOM.ballsPerTurnUI.textContent = state.config.BALLS_PER_TURN; DOM.nextBalls.innerHTML = '';
-            state.nextItems.forEach(item => DOM.nextBalls.appendChild(createItemSVG(item)));
-            DOM.comboCounter.textContent = state.comboCounter > 1 ? `${state.comboCounter}X Szorzó!` : '';
-            DOM.abilityBarFill.style.width = `${Math.min(100, (state.abilityCharge / state.config.ABILITY_CHARGE_GOAL) * 100)}%`;
-            DOM.colorBombCount.textContent = state.earnedAbilities.colorBomb;
-            DOM.colorBombButton.disabled = state.earnedAbilities.colorBomb === 0 || state.isAnimating;
+            if(rand < bombChance) return { type: 'bomb' }; 
+            if(rand < bombChance + rainbowChance && state.level > 2) return { type: 'rainbow' };
             
-            if(state.activeAbility) { DOM.colorBombButton.textContent = 'Mégse'; DOM.colorBombButton.style.background = '#ef4444'; }
-            else { DOM.colorBombButton.innerHTML = `<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>Aktiválás (<span id="color-bomb-count">${state.earnedAbilities.colorBomb}</span>)`; DOM.colorBombButton.style.background = ''; }
+            let color = pool[Math.floor(Math.random()*pool.length)];
+            let stripe = null;
+            if (Math.random() < 0.05) stripe = Math.random() < 0.5 ? 'h' : 'v'; 
+            
+            return { type: 'ball', color, stripe };
         }
 
-        function toggleColorBomb() {
-            if (state.isAnimating || state.earnedAbilities.colorBomb === 0) return;
-            if (state.activeAbility === 'colorBomb') { state.activeAbility = null; document.body.classList.remove('ability-active'); }
-            else { state.activeAbility = 'colorBomb'; document.body.classList.add('ability-active'); clearPreviews(); }
-            updateUI();
+        function genNext() {
+            state.next = Array(3).fill(0).map(() => genRandomBall());
+            const pre = document.getElementById('next-preview'); pre.innerHTML = '';
+            state.next.forEach(obj => {
+                const wrap = document.createElement('div'); wrap.style.position = 'relative'; wrap.style.width='35px'; wrap.style.height='35px';
+                const bDOM = createBallDOM(obj); bDOM.style.position = 'relative'; bDOM.style.animation = 'none'; 
+                wrap.appendChild(bDOM); pre.appendChild(wrap);
+            });
         }
 
-        function showFloatingText(text, r, c, className) {
-            const popup = document.createElement('div'); popup.textContent = text; popup.className = `floating-text ${className}`;
-            popup.style.left = `${c * getCell(0,0).offsetWidth + (getCell(0,0).offsetWidth/2)}px`; popup.style.top = `${r * getCell(0,0).offsetHeight}px`; popup.style.transform = 'translate3d(-50%, -50%, 0)';
-            DOM.board.appendChild(popup); setTimeout(() => popup.remove(), 2000);
+        function spawnBalls(count) {
+            const empties =[];
+            for(let i=0; i<state.grid*state.grid; i++) { if(!state.board[i]) empties.push(i); }
+            
+            for(let i=0; i<Math.min(count, empties.length); i++) {
+                const idx = empties.splice(Math.floor(Math.random()*empties.length), 1)[0];
+                state.board[idx] = state.next[i] || genRandomBall();
+            }
+            genNext();
         }
 
-        function findPath(fromR, fromC, toR, toC) { const o = state.board[fromR][fromC]; state.board[fromR][fromC] = null; const q = [[{ r: fromR, c: fromC }]]; const v = new Set([`${fromR}-${fromC}`]); let found = null; while (q.length > 0) { const p = q.shift(); const { r, c } = p[p.length - 1]; if (r === toR && c === toC) { found = p; break; } const n =[{r: r-1, c}, {r: r+1, c}, {r, c: c-1}, {r, c: c+1}]; for (const { r: nr, c: nc } of n) { const k = `${nr}-${nc}`; if (nr >= 0 && nr < state.config.GRID_SIZE && nc >= 0 && nc < state.config.GRID_SIZE && !state.board[nr][nc] && !v.has(k)) { v.add(k); q.push([...p, { r: nr, c: nc }]); } } } state.board[fromR][fromC] = o; return found; }
-        
-        function onCellHover(r, c) { clearPreviews(); if (state.isAnimating || !state.selectedItem || state.board[r][c] || state.activeAbility) return; const path = findPath(state.selectedItem.r, state.selectedItem.c, r, c); if (path) { const cellSize = getCell(0, 0).offsetWidth; const points = path.map(p => `${p.c * cellSize + cellSize / 2},${p.r * cellSize + cellSize / 2}`).join(' '); const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polyline'); poly.setAttribute('points', points); poly.id = 'path-line'; DOM.pathOverlay.appendChild(poly); const ghost = createItemSVG(state.selectedItem, true); getCell(r, c).appendChild(ghost); }}
-        function clearPreviews() { if (DOM.pathOverlay) DOM.pathOverlay.innerHTML = ''; document.querySelector('.ball.ghost')?.remove(); }
-        function getCell(r, c) { return document.querySelector(`.cell[data-r='${r}'][data-c='${c}']`); }
-        
-        function saveUndoState() { state.undoState = { board: JSON.parse(JSON.stringify(state.board)), score: state.score, comboCounter: state.comboCounter, abilityCharge: state.abilityCharge, earnedAbilities: JSON.parse(JSON.stringify(state.earnedAbilities)), walls: Array.from(state.walls) }; }
-        function handleUndo() { if (state.earnedAbilities.undo > 0 && state.undoState && !state.isAnimating) { state.isAnimating = true; state.earnedAbilities.undo--; localStorage.setItem('szinFormaUndos', state.earnedAbilities.undo); Object.assign(state, { board: JSON.parse(JSON.stringify(state.undoState.board)), score: state.undoState.score, comboCounter: state.undoState.comboCounter, abilityCharge: state.undoState.abilityCharge, walls: new Set(state.undoState.walls), undoState: null, activeAbility: null }); document.body.classList.remove('ability-active'); DOM.board.querySelectorAll('.ball').forEach(b => b.remove()); DOM.board.querySelectorAll('.glass-floor').forEach(w => w.remove()); for (let r = 0; r < state.config.GRID_SIZE; r++) for (let c = 0; c < state.config.GRID_SIZE; c++) { if (state.board[r][c]) placeItemOnBoard(r, c, state.board[r][c]); if (state.walls.has(`${r}-${c}`)) { const wallSVG = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); wallSVG.setAttribute('class', 'glass-floor'); wallSVG.setAttribute('viewBox', '0 0 100 100'); const use = document.createElementNS('http://www.w3.org/2000/svg', 'use'); use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', '#wall-floor'); wallSVG.appendChild(use); getCell(r,c).appendChild(wallSVG); } } updateUI(); state.isAnimating = false; } }
+        // --- HTML5 RÉSZECSKERENDSZER ---
+        function html5Explosion(indicesArray, colorName) {
+            const board = document.getElementById('board');
+            const c = COLORS[colorName] ? COLORS[colorName][0] : '#fff';
+            const boardRect = board.getBoundingClientRect();
+            
+            indicesArray.forEach(idx => {
+                const cellEl = document.getElementById(`cell-${idx}`);
+                if(!cellEl) return;
+                const cellRect = cellEl.getBoundingClientRect();
+                const x = (cellRect.left - boardRect.left) + (cellRect.width / 2);
+                const y = (cellRect.top - boardRect.top) + (cellRect.height / 2);
 
-        DOM.btnContinue.addEventListener('click', () => startLevel(state.currentLevel));
-        DOM.btnNewGame.addEventListener('click', () => { if(confirm("Minden eddigi haladásod elvész. Kezdhetjük?")) { localStorage.setItem('szinFormaBombs', 0); localStorage.setItem('szinFormaUndos', 3); state.earnedAbilities.colorBomb = 0; state.earnedAbilities.undo = 3; startLevel(1); }});
-        DOM.btnNextLevel.addEventListener('click', () => startLevel(state.currentLevel + 1));
-        DOM.btnRetryLevel.addEventListener('click', () => startLevel(state.currentLevel));
-        DOM.btnMenu.addEventListener('click', openMenu); DOM.btnMenuFromLose.addEventListener('click', openMenu);
-        DOM.undoButton.addEventListener('click', handleUndo); DOM.colorBombButton.addEventListener('click', toggleColorBomb);
+                for(let i=0; i<8; i++) { 
+                    const p = document.createElement('div');
+                    p.className = 'html-particle';
+                    p.style.backgroundColor = c; p.style.color = c; 
+                    
+                    const size = Math.random() * 8 + 4;
+                    p.style.width = size + 'px'; p.style.height = size + 'px';
+                    p.style.left = x + 'px'; p.style.top = y + 'px';
+                    
+                    const angle = Math.random() * Math.PI * 2; 
+                    const distance = Math.random() * 60 + 30;
+                    p.style.setProperty('--dx', Math.cos(angle) * distance + 'px');
+                    p.style.setProperty('--dy', Math.sin(angle) * distance + 'px');
+                    
+                    board.appendChild(p);
+                    setTimeout(() => p.remove(), 400); 
+                }
+            });
+        }
 
-        openMenu();
-    });
+        function showFloatingText(txt, idx) {
+            const board = document.getElementById('board-container');
+            const cellEl = document.getElementById(`cell-${idx}`);
+            if(!cellEl) return;
+            const cellRect = cellEl.getBoundingClientRect();
+            const boardRect = board.getBoundingClientRect();
+            
+            const div = document.createElement('div');
+            div.className = 'floating-text'; div.textContent = txt;
+            div.style.left = `${(cellRect.left - boardRect.left) + cellRect.width/2}px`; 
+            div.style.top = `${(cellRect.top - boardRect.top) + cellRect.height/2}px`;
+            board.appendChild(div); setTimeout(() => div.remove(), 1000);
+        }
+
+        // --- CÉLOK ÉS JÁTÉK VÉGE ---
+        async function checkLevelEnd() {
+            let allComplete = true;
+            for(const obj of Object.values(state.objectives)) { if(obj.current < obj.target) allComplete = false; }
+            
+            if(allComplete) {
+                state.level++; state.undos = Math.min(10, state.undos + 1);
+                try { await setDoc(doc(db, "players", state.name), { level: state.level, undos: state.undos, taskPool: state.taskPool, activeTasks:[] }); } catch(e){}
+                
+                if (state.level === 1000) { 
+                    document.getElementById('champion-screen').classList.add('visible'); 
+                } else { 
+                    // Véletlenszerű motivációs üzenet beállítása
+                    const randomTitle = LEVEL_UP_TITLES[Math.floor(Math.random() * LEVEL_UP_TITLES.length)];
+                    const randomMsg = LEVEL_UP_MESSAGES[Math.floor(Math.random() * LEVEL_UP_MESSAGES.length)];
+                    
+                    document.getElementById('level-up-title').textContent = randomTitle;
+                    document.getElementById('level-up-desc').textContent = randomMsg;
+                    document.getElementById('level-up-screen').classList.add('visible'); 
+                }
+            } else {
+                let isFull = true;
+                for(let i=0; i<state.grid*state.grid; i++) { if(!state.board[i]) { isFull = false; break; } }
+
+                if(isFull) {
+                    if(state.undos >= 2) {
+                        document.getElementById('btn-revive').style.display = 'block';
+                        document.getElementById('game-over-text').textContent = "Megmentheted a pályát 2 Vissza gombért cserébe!";
+                    } else {
+                        document.getElementById('btn-revive').style.display = 'none';
+                        document.getElementById('game-over-text').textContent = "Nincs több lépésed és elég Vissza pontod. Újra kell kezdened.";
+                    }
+                    document.getElementById('game-over-screen').classList.add('visible');
+                }
+            }
+        }
+
+        document.getElementById('btn-next-level').onclick = () => { document.getElementById('level-up-screen').classList.remove('visible'); startRoulette(); };
+        document.getElementById('btn-restart').onclick = () => { document.getElementById('game-over-screen').classList.remove('visible'); initLevel(); };
+
+        document.getElementById('btn-revive').onclick = () => {
+            state.undos -= 2;
+            let normalBalls =[];
+            state.board.forEach((b, i) => { if(b) normalBalls.push(i); });
+            for(let i=0; i<Math.min(5, normalBalls.length); i++) {
+                let idx = normalBalls.splice(Math.floor(Math.random()*normalBalls.length), 1)[0];
+                state.board[idx] = null;
+            }
+            document.getElementById('game-over-screen').classList.remove('visible');
+            renderBoard(); updateObjectivesUI();
+        };
+
+        // --- IDŐSTOP FUNKCIÓ ---
+        function tickTimeStop() {
+            const btn = document.getElementById('btn-freeze');
+            const now = Date.now();
+            
+            if(now < state.timeStopUntil) {
+                const secsLeft = Math.ceil((state.timeStopUntil - now) / 1000);
+                btn.innerHTML = `<span style="font-size: 1.2rem;">⏳</span> IDŐSTOP (${secsLeft}s)`;
+                requestAnimationFrame(tickTimeStop);
+            } else {
+                btn.className = 'btn btn-action';
+                updateObjectivesUI(); 
+            }
+        }
+
+        document.getElementById('btn-freeze').onclick = () => {
+            if(state.freezeCharge < 100) return;
+            state.freezeCharge = 0;
+            
+            incrementObjective('freeze', 1); 
+            
+            const durationMs = Math.max(3000, 15000 - (state.level * 12));
+            state.timeStopUntil = Date.now() + durationMs;
+            
+            const btn = document.getElementById('btn-freeze');
+            btn.className = 'btn btn-action active-timer';
+            
+            tickTimeStop();
+        };
     </script>
 </body>
 </html>
