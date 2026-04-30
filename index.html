@@ -515,7 +515,7 @@
             undos: 3, goldCells: new Set(), timeSparks: new Set(),
             objectives: {}, taskPool:[], activeTasks:[],
             isAnimating: false, history:[], freezeCharge: 0, timeStopUntil: 0,
-            lastMovedTo: null, comboStreak: 0, rerollAvailable: true
+            lastMovedTo: null, comboStreak: 0, rerollAvailable: true, previewIdx: null
         };
 
         // --- RANGLISTA ÉS INDÍTÁS ---
@@ -791,7 +791,7 @@
                 cell.id = `cell-${i}`; cell.className = 'cell';
                 cell.onclick = () => handleMove(i);
                 cell.onmouseenter = () => showPreviewPath(i);
-                cell.onmouseleave = () => document.getElementById('path-svg').innerHTML = '';
+                cell.onmouseleave = () => { if(!state.isAnimating) document.getElementById('path-svg').innerHTML = ''; };
                 board.appendChild(cell);
             }
         }
@@ -835,14 +835,18 @@
             }
         }
 
-        // --- JÁTÉKMENET LOGIKA (COMBO KEZELÉSSEL) ---
+        // --- JÁTÉKMENET LOGIKA (COMBO KEZELÉSSEL ÉS MOBIL VONALLAL) ---
         async function handleMove(i) {
             if(state.isAnimating) return;
             const item = state.board[i];
 
             if(item) {
                 if(item.type === 'bomb' || item.type === 'nuke') {
-                    if (state.selected === i) { triggerBomb(i); return; } 
+                    if (state.selected === i) { 
+                        document.getElementById('path-svg').innerHTML = '';
+                        triggerBomb(i); 
+                        return; 
+                    } 
                     else { state.selected = i; renderBoard(); return; }
                 } else {
                     state.selected = (state.selected === i) ? null : i;
@@ -851,7 +855,9 @@
             } else if(state.selected !== null && !item) {
                 const path = findPath(state.selected, i);
                 if(path) {
-                    document.getElementById('path-svg').innerHTML = '';
+                    state.isAnimating = true; // Azonnal blokkoljuk az esetleges dupla kattintást
+                    showPreviewPath(i, true); // MUTATJA A VONALAT (Mobilon is látszódni fog a mozgás közben!)
+                    
                     saveHistory();
                     
                     const obj = state.board[state.selected];
@@ -871,6 +877,9 @@
                     });
 
                     await animateLiquidMove(path, obj);
+                    
+                    document.getElementById('path-svg').innerHTML = ''; // Mozgás végén eltüntetjük a vonalat
+                    
                     state.board[i] = obj;
                     renderBoard();
 
@@ -896,6 +905,7 @@
 
         window.undoMove = () => {
             if(state.history.length > 0 && state.undos > 0 && !state.isAnimating) {
+                document.getElementById('path-svg').innerHTML = '';
                 const prev = JSON.parse(state.history.pop());
                 state.board = prev.board; state.goldCells = new Set(prev.gold); state.timeSparks = new Set(prev.sparks);
                 state.undos--; state.selected = null; state.comboStreak = 0;
@@ -903,10 +913,10 @@
             }
         };
 
-        // --- ÚTVONAL ---
-        function showPreviewPath(targetIdx) {
+        // --- ÚTVONAL (MOBILRA IS) ---
+        function showPreviewPath(targetIdx, force = false) {
             const svg = document.getElementById('path-svg'); svg.innerHTML = '';
-            if(state.selected === null || state.board[targetIdx] || state.isAnimating) return;
+            if(state.selected === null || state.board[targetIdx] || (state.isAnimating && !force)) return;
 
             const path = findPath(state.selected, targetIdx);
             if(path && path.length > 1) {
@@ -943,8 +953,7 @@
         }
 
         async function animateLiquidMove(path, obj) {
-            state.isAnimating = true;
-            
+            // isAnimating már true-ra van állítva a handleMove elején!
             const startCell = document.getElementById(`cell-${path[0]}`);
             const w = startCell.querySelector('.ball-wrapper'); if(w) w.remove();
 
@@ -966,6 +975,39 @@
             
             await anim.finished; flyingDOM.remove(); state.isAnimating = false;
         }
+
+        // --- MOBIL ÉRINTÉS (DRAG PREVIEW) KEZELÉSE ---
+        const boardEl = document.getElementById('board');
+        boardEl.addEventListener('touchmove', (e) => {
+            if(state.selected === null || state.isAnimating) return;
+            const touch = e.touches[0];
+            const target = document.elementFromPoint(touch.clientX, touch.clientY);
+            if(target && target.closest('.cell')) {
+                const cell = target.closest('.cell');
+                const idx = parseInt(cell.id.split('-')[1]);
+                if (!state.board[idx]) {
+                    e.preventDefault(); // Csak akkor blokkoljuk a görgetést, ha érvényes útvonalat húz
+                    showPreviewPath(idx);
+                    state.previewIdx = idx;
+                } else {
+                    document.getElementById('path-svg').innerHTML = '';
+                    state.previewIdx = null;
+                }
+            } else {
+                document.getElementById('path-svg').innerHTML = '';
+                state.previewIdx = null;
+            }
+        }, {passive: false});
+
+        boardEl.addEventListener('touchend', (e) => {
+            if(state.selected !== null && state.previewIdx !== null && !state.isAnimating) {
+                const idx = state.previewIdx;
+                state.previewIdx = null;
+                if(!state.board[idx]) {
+                    handleMove(idx);
+                }
+            }
+        });
 
         // --- ROBBANÁSOK ÉS LÁNCREAKCIÓK ---
         async function checkMatches(isPlayerMove = false) {
